@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Bell, TriangleAlert as AlertTriangle, Shield, Wind, Map as MapIcon } from 'lucide-react-native';
+import { Search, Bell, TriangleAlert as AlertTriangle, Shield, Wind, Map as MapIcon, Globe } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
+import TranslatedText from '@/components/TranslatedText';
+import LanguagePicker from '@/components/LanguagePicker';
 
 // Theme Configuration
 const THEME = {
@@ -210,13 +212,13 @@ const getStatusColor = (status: 'good' | 'moderate' | 'poor') => {
 // Air Quality Parameter Component
 const AirQualityParameter: React.FC<AirQualityParameterProps> = ({ title, value, unit, status }) => (
   <View style={[styles.parameter, { borderLeftColor: getStatusColor(status), borderLeftWidth: 4 }]}>
-    <Text style={styles.parameterTitle}>{title}</Text>
+    <TranslatedText textKey={title} style={styles.parameterTitle} />
     <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
       <Text style={styles.parameterValue}>{value}</Text>
-      <Text style={styles.parameterUnit}>{unit}</Text>
+      <TranslatedText textKey={unit} style={styles.parameterUnit} />
     </View>
     <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(status) }]}>
-      <Text style={styles.statusText}>{status.toUpperCase()}</Text>
+      <TranslatedText textKey={status.toUpperCase()} style={styles.statusText} />
     </View>
   </View>
 );
@@ -233,8 +235,8 @@ const HealthAdvisory = ({ aqiLevel }: { aqiLevel: number }) => {
     <View style={styles.advisoryCard}>
       <AlertTriangle size={24} color={THEME.warning} />
       <View style={styles.advisoryContent}>
-        <Text style={styles.advisoryLevel}>{advisory.healthAdvisory.level}</Text>
-        <Text style={styles.advisoryMessage}>{advisory.healthAdvisory.message}</Text>
+        <TranslatedText textKey={advisory.healthAdvisory.level} style={styles.advisoryLevel} />
+        <TranslatedText textKey={advisory.healthAdvisory.message} style={styles.advisoryMessage} />
       </View>
     </View>
   );
@@ -253,8 +255,8 @@ const PreventiveMeasures = ({ aqiLevel }: { aqiLevel: number }) => {
         <View key={index} style={styles.measureCard}>
           <Shield size={20} color={THEME.primary} />
           <View style={styles.measureContent}>
-            <Text style={styles.measureTitle}>{measure.title}</Text>
-            <Text style={styles.measureDescription}>{measure.description}</Text>
+            <TranslatedText textKey={measure.title} style={styles.measureTitle} />
+            <TranslatedText textKey={measure.description} style={styles.measureDescription} />
           </View>
         </View>
       ))}
@@ -360,7 +362,7 @@ const LocationMap = ({ location, nearbyLocations, errorMsg }: { location: Locati
     return (
       <View style={styles.mapLoadingContainer}>
         <ActivityIndicator size="large" color={THEME.primary} />
-        <Text style={styles.mapLoadingText}>Fetching location...</Text>
+        <TranslatedText textKey='Fetching location...' style={styles.mapLoadingText}/>
       </View>
     );
   }
@@ -416,6 +418,7 @@ const ProfileAvatar = () => {
   return (
     <TouchableOpacity 
       onPress={() => router.push('./profile/rahul')}
+      onPress={() => router.push('./profile/rahul')}
       style={styles.avatarContainer}
     >
       <Image 
@@ -425,6 +428,7 @@ const ProfileAvatar = () => {
     </TouchableOpacity>
   );
 };
+
 
 // Main Home Screen Component
 export default function HomeScreen() {
@@ -513,7 +517,7 @@ export default function HomeScreen() {
           <Text style={styles.date}>{currentDate}</Text>
         </View>
         <View style={styles.headerIcons}>
-          <Search size={24} color={THEME.text.primary} style={styles.icon} />
+          <LanguagePicker />
           <Bell size={24} color={THEME.text.primary} />
           <ProfileAvatar />
         </View>
@@ -522,20 +526,15 @@ export default function HomeScreen() {
         <View style={styles.airQualityCard}>
           <View style={styles.aqiHeader}>
             <Wind size={24} color={THEME.primary} />
-            <Text style={styles.aqiTitle}>Air Quality Index</Text>
+            <TranslatedText textKey="Air Quality Index" style={styles.aqiTitle} />
           </View>
           <View style={styles.aqiContent}>
             {aqiData ? (
-              <Text style={styles.aqiValue}>{aqiData.aqi + "/ 5" || "N/A"}
-                {/* <Text>5 - Very Bad</Text> */}
-              </Text>
-
+              <Text style={styles.aqiValue}>{aqiData.aqi + "/ 5" || "N/A"}</Text>
             ) : (
-              <ActivityIndicator size="small" color={THEME.primary} 
-              
-              />
+              <ActivityIndicator size="small" color={THEME.primary} />
             )}
-            <Text style={styles.aqiCategory}>Unhealthy</Text>
+            <TranslatedText textKey="Unhealthy" style={styles.aqiCategory} />
             <View style={styles.aqiScale}>
               <View style={[styles.aqiIndicator, { width: '65%' }]} />
             </View>
@@ -546,7 +545,7 @@ export default function HomeScreen() {
           <View style={styles.mapCard}>
             <View style={styles.mapHeader}>
               <MapIcon size={22} color={THEME.primary} />
-              <Text style={styles.mapTitle}>Air Quality Map</Text>
+              <TranslatedText textKey="Air Quality Map" style={styles.mapTitle} />
             </View>
             {errorMsg ? (
               <Text style={styles.errorText}>{errorMsg}</Text>
@@ -569,19 +568,20 @@ export default function HomeScreen() {
           )}
         </View>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Health Advisory</Text>
+          <TranslatedText textKey="Health Advisory" style={styles.sectionTitle} />
           <HealthAdvisory
             aqiLevel={aqiData?.aqi || 1}
           />
         </View>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preventive Measures</Text>
+          <TranslatedText textKey="Preventive Measures" style={styles.sectionTitle} />
           <PreventiveMeasures
             aqiLevel={aqiData?.aqi || 1}
           />
-          
-          
         </View>
+        <TouchableOpacity style={styles.emergencyButton}>
+          <TranslatedText textKey="Get Medical Help" style={styles.emergencyButtonText} />
+        </TouchableOpacity>
         
       </ScrollView>
     </SafeAreaView>
@@ -861,5 +861,17 @@ const styles = StyleSheet.create({
   avatar: {
     width: '100%',
     height: '100%',
+  },
+  languageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+    padding: 4,
+  },
+  languageCode: {
+    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.primary,
   },
 });
