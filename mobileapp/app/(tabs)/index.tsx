@@ -416,8 +416,7 @@ const ProfileAvatar = () => {
   const router = useRouter();
   
   return (
-    <TouchableOpacity 
-      onPress={() => router.push('./profile/rahul')}
+    <TouchableOpacity
       onPress={() => router.push('./profile/rahul')}
       style={styles.avatarContainer}
     >
@@ -508,13 +507,25 @@ export default function HomeScreen() {
     return locations;
   };
 
+  // Helper Function to Get AQI Message
+const getAqiMessage = (aqi: number) => {
+  if (aqi <= 1) return 'Air quality is excellent. Enjoy your day!';
+  if (aqi === 2) return 'Air quality is good. No major concerns.';
+  if (aqi === 3) return 'Air quality is moderate. Sensitive individuals should be cautious.';
+  if (aqi === 4) return 'Air quality is unhealthy. Limit outdoor activities.';
+  if (aqi === 5) return 'Air quality is very unhealthy. Avoid outdoor activities.';
+  return 'Air quality data unavailable.';
+};
+
+
+
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Hello, Rahul</Text>
-          <Text style={styles.date}>{currentDate}</Text>
+          <Text style={styles.date}>{`${location?.longitude}, ${location?.latitude}`}</Text>
         </View>
         <View style={styles.headerIcons}>
           <LanguagePicker />
@@ -530,15 +541,19 @@ export default function HomeScreen() {
           </View>
           <View style={styles.aqiContent}>
             {aqiData ? (
-              <Text style={styles.aqiValue}>{aqiData.aqi + "/ 5" || "N/A"}</Text>
+                <TranslatedText style={styles.aqiValue} textKey={`${getAqiMessage(aqiData.aqi)}` || "N/A"}></TranslatedText>
             ) : (
-              <ActivityIndicator size="small" color={THEME.primary} />
+              <></>
             )}
-            <TranslatedText textKey="Unhealthy" style={styles.aqiCategory} />
-            <View style={styles.aqiScale}>
-              <View style={[styles.aqiIndicator, { width: '65%' }]} />
-            </View>
+            
+            
           </View>
+        </View>
+        <View style={styles.section}>
+          <TranslatedText textKey="Health Advisory" style={styles.sectionTitle} />
+          <HealthAdvisory
+            aqiLevel={aqiData?.aqi || 1}
+          />
         </View>
         {/* Map section - always visible */}
         <View style={styles.mapWrapper}>
@@ -567,21 +582,14 @@ export default function HomeScreen() {
             </>
           )}
         </View>
-        <View style={styles.section}>
-          <TranslatedText textKey="Health Advisory" style={styles.sectionTitle} />
-          <HealthAdvisory
-            aqiLevel={aqiData?.aqi || 1}
-          />
-        </View>
+        
         <View style={styles.section}>
           <TranslatedText textKey="Preventive Measures" style={styles.sectionTitle} />
           <PreventiveMeasures
             aqiLevel={aqiData?.aqi || 1}
           />
         </View>
-        <TouchableOpacity style={styles.emergencyButton}>
-          <TranslatedText textKey="Get Medical Help" style={styles.emergencyButtonText} />
-        </TouchableOpacity>
+        
         
       </ScrollView>
     </SafeAreaView>
@@ -597,6 +605,8 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   header: {
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -605,6 +615,11 @@ const styles = StyleSheet.create({
     position: 'sticky',
     top: 0,
     zIndex: 1,
+    // shadowColor: '#07A996',
+    // shadowOpacity: 0.1,
+    // shadowRadius: 12,
+    // shadowOffset: { width: 0, height: 10 },
+    // elevation: 20,
   },
   greeting: {
     fontSize: 24,
@@ -650,7 +665,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   aqiValue: {
-    fontSize: 48,
+    fontSize: 28,
     fontWeight: 'bold',
     color: THEME.danger,
   },
