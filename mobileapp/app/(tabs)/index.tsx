@@ -31,10 +31,166 @@ interface AirQualityParameterProps {
   status: 'good' | 'moderate' | 'poor';
 }
 
+interface AQIInfo {
+  id: number;              // AQI level (1-5)
+  category: string;        // Text description of air quality
+  color: string;           // Color code for visual representation
+  healthAdvisory: {
+    level: string;         // Advisory level name
+    message: string;       // Detailed health advisory message
+  };
+  preventiveMeasures: {
+    title: string;         // Short title for the measure
+    description: string;   // Detailed description of the preventive measure
+  }[];
+}
+
 interface LocationData {
   latitude: number;
   longitude: number;
 }
+
+const aqiData: AQIInfo[] = [
+  {
+      id: 1,
+      category: "Good",
+      color: "#00C853", // Green
+      healthAdvisory: {
+          level: "Safe",
+          message: "Air quality is considered satisfactory, and air pollution poses little or no risk to public health."
+      },
+      preventiveMeasures: [
+          {
+              title: "Enjoy Outdoor Activities",
+              description: "It's a great day to be active outside and enjoy the fresh air."
+          },
+          {
+              title: "Monitor Changes",
+              description: "Keep an eye on air quality updates if you have respiratory sensitivities."
+          },
+          {
+              title: "Regular Ventilation",
+              description: "Open windows to let fresh air circulate through your home."
+          }
+      ]
+  },
+  {
+      id: 2,
+      category: "Moderate",
+      color: "#FFEB3B", // Yellow
+      healthAdvisory: {
+          level: "Moderate Concern",
+          message: "Air quality is acceptable; however, there may be a moderate health concern for a very small number of people who are unusually sensitive to air pollution."
+      },
+      preventiveMeasures: [
+          {
+              title: "Sensitive Groups Caution",
+              description: "If you have respiratory issues, consider reducing prolonged outdoor exertion."
+          },
+          {
+              title: "Windows Management",
+              description: "Consider closing windows during peak traffic hours when pollution may increase."
+          },
+          {
+              title: "Air Quality Monitoring",
+              description: "Keep track of air quality forecasts, especially if you have respiratory conditions."
+          }
+      ]
+  },
+  {
+      id: 3,
+      category: "Unhealthy for Sensitive Groups",
+      color: "#FF9800", // Orange
+      healthAdvisory: {
+          level: "Health Alert",
+          message: "Members of sensitive groups may experience health effects. The general public is less likely to be affected. Children, older adults, and people with heart or lung disease should reduce prolonged outdoor exposure."
+      },
+      preventiveMeasures: [
+          {
+              title: "Limit Outdoor Activities",
+              description: "Sensitive individuals should limit strenuous outdoor activities, especially during peak pollution hours."
+          },
+          {
+              title: "Keep Windows Closed",
+              description: "Keep windows closed during the day and use air conditioning if available."
+          },
+          {
+              title: "Consider Indoor Air Purifiers",
+              description: "Use HEPA air purifiers indoors to maintain better air quality at home."
+          },
+          {
+              title: "Air-Purifying Plants",
+              description: "Place air-purifying plants like Snake Plant or Peace Lily in your living spaces."
+          }
+      ]
+  },
+  {
+      id: 4,
+      category: "Unhealthy",
+      color: "#FF5252", // Red
+      healthAdvisory: {
+          level: "High Risk Alert",
+          message: "Everyone may begin to experience health effects; members of sensitive groups may experience more serious health effects. People with respiratory conditions should avoid outdoor activities, and the general public should limit prolonged exertion."
+      },
+      preventiveMeasures: [
+          {
+              title: "Wear Masks Outdoors",
+              description: "Use N95 masks when going outside to protect from harmful particles."
+          },
+          {
+              title: "Avoid Outdoor Exercise",
+              description: "Everyone should avoid strenuous outdoor activities, especially during peak pollution times."
+          },
+          {
+              title: "Keep Windows Sealed",
+              description: "Keep windows and doors tightly closed at all times."
+          },
+          {
+              title: "Use Air Purifiers",
+              description: "Run HEPA air purifiers in main living spaces continuously."
+          },
+          {
+              title: "Hydrate Well",
+              description: "Drink plenty of water to help your body clear toxins more efficiently."
+          }
+      ]
+  },
+  {
+      id: 5,
+      category: "Hazardous",
+      color: "#7E0023", // Deep red/purple
+      healthAdvisory: {
+          level: "Emergency Condition",
+          message: "Health warnings of emergency conditions. The entire population is more likely to be affected. Everyone should avoid all outdoor exertion. If you must go outdoors, wear appropriate respiratory protection. Consider temporary relocation if possible."
+      },
+      preventiveMeasures: [
+          {
+              title: "Stay Indoors",
+              description: "Remain indoors with windows and doors sealed. Create a clean air room if possible."
+          },
+          {
+              title: "Proper Mask Protection",
+              description: "Use N95 or higher-rated masks whenever outdoor exposure is unavoidable."
+          },
+          {
+              title: "Multiple Air Purifiers",
+              description: "Use multiple air purifiers throughout your home, focusing on bedrooms and main living areas."
+          },
+          {
+              title: "Seal Gaps",
+              description: "Use tape or towels to seal gaps around windows and doors to prevent polluted air from entering."
+          },
+          {
+              title: "Monitor Health Symptoms",
+              description: "Watch for symptoms like coughing, shortness of breath, or unusual fatigue and seek medical help immediately if they occur."
+          },
+          {
+              title: "Consider Evacuation",
+              description: "If possible, consider temporary relocation to an area with better air quality, especially for vulnerable individuals."
+          }
+      ]
+  }
+];
 
 // Helper Function to Get Status Color
 const getStatusColor = (status: 'good' | 'moderate' | 'poor') => {
@@ -65,28 +221,47 @@ const AirQualityParameter: React.FC<AirQualityParameterProps> = ({ title, value,
 );
 
 // Health Advisory Component
-const HealthAdvisory = ({ level, message }: { level: string; message: string }) => (
-  <View style={styles.advisoryCard}>
-    <AlertTriangle size={24} color={THEME.warning} />
-    <View style={styles.advisoryContent}>
-      <Text style={styles.advisoryLevel}>{level}</Text>
-      <Text style={styles.advisoryMessage}>{message}</Text>
-    </View>
-  </View>
-);
+const HealthAdvisory = ({ aqiLevel }: { aqiLevel: number }) => {
+  const advisory = aqiData.find((data) => data.id === aqiLevel);
 
-// Preventive Measure Component
-const PreventiveMeasure = ({ title, description }: { title: string; description: string }) => (
-  <View style={styles.measureCard}>
-    <Shield size={20} color={THEME.primary} />
-    <View style={styles.measureContent}>
-      <Text style={styles.measureTitle}>{title}</Text>
-      <Text style={styles.measureDescription}>{description}</Text>
+  if (!advisory) {
+    return null;
+  }
+
+  return (
+    <View style={styles.advisoryCard}>
+      <AlertTriangle size={24} color={THEME.warning} />
+      <View style={styles.advisoryContent}>
+        <Text style={styles.advisoryLevel}>{advisory.healthAdvisory.level}</Text>
+        <Text style={styles.advisoryMessage}>{advisory.healthAdvisory.message}</Text>
+      </View>
     </View>
-  </View>
-);
+  );
+};
+
+const PreventiveMeasures = ({ aqiLevel }: { aqiLevel: number }) => {
+  const advisory = aqiData.find((data) => data.id === aqiLevel);
+
+  if (!advisory) {
+    return null;
+  }
+
+  return (
+    <View>
+      {advisory.preventiveMeasures.map((measure, index) => (
+        <View key={index} style={styles.measureCard}>
+          <Shield size={20} color={THEME.primary} />
+          <View style={styles.measureContent}>
+            <Text style={styles.measureTitle}>{measure.title}</Text>
+            <Text style={styles.measureDescription}>{measure.description}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+};
 // Map Component Using WebView
-const LocationMap = ({ location, errorMsg }: { location: LocationData | null, errorMsg: string | null }) => {
+const LocationMap = ({ location, nearbyLocations, errorMsg }: { location: LocationData | null, nearbyLocations: any[], errorMsg: string | null }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Generate map HTML directly when component renders instead of storing in state
@@ -104,7 +279,7 @@ const LocationMap = ({ location, errorMsg }: { location: LocationData | null, er
 
     // Inside the LocationMap component, replace the existing mapHtml variable with this improved version:
 
-mapHtml = `
+    mapHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -198,6 +373,23 @@ mapHtml = `
     );
   }
 
+
+
+  const generateNearbyLocations = (latitude: number, longitude: number, radiusKm: any) => {
+    const locations = [];
+    for (let i = 0; i < 5; i++) {
+      const angle = Math.random() * 2 * Math.PI;
+      const distance = Math.random() * radiusKm;
+      const dx = distance * Math.cos(angle) / 111; // Convert km to degrees
+      const dy = distance * Math.sin(angle) / 111;
+      locations.push({
+        lat: latitude + dy,
+        lng: longitude + dx,
+      });
+    }
+    return locations;
+  };
+
   return (
     <View style={styles.mapContainer}>
       <WebView
@@ -220,6 +412,24 @@ mapHtml = `
 export default function HomeScreen() {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  interface AqiData {
+    latitude: number;
+    longitude: number;
+    aqi: number;
+    components: {
+      co: number;
+      no: number;
+      no2: number;
+      o3: number;
+      so2: number;
+      pm2_5: number;
+      pm10: number;
+      nh3: number;
+    };
+  }
+
+  const [aqiData, setAqiData] = useState<AqiData | null>(null);
+  const [nearbyLocations, setNearbyLocations] = useState([]);
   const currentDate = new Date().toLocaleDateString('en-US', {
     day: 'numeric',
     month: 'long',
@@ -239,8 +449,43 @@ export default function HomeScreen() {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       });
+
+      // Fetch AQI data after setting the location
+      const aqiData = await fetchAqiData(location.coords.latitude, location.coords.longitude);
+      setAqiData(aqiData);
     })();
   }, []);
+
+  const fetchAqiData = async (latitude: number, longitude: number) => {
+    const API_KEY = 'e1065fe7bbad2662e76077c32272468b'; // Replace with your API key
+    const response = await fetch(
+      `https://api.openweathermap.org/data/2.5/air_pollution?lat=${latitude}&lon=${longitude}&appid=${API_KEY}`
+    );
+    const data = await response.json();
+    return {
+      latitude,
+      longitude,
+      aqi: data.list[0].main.aqi,
+      components: data.list[0].components,
+    };
+  };
+
+  // Generate random locations within a given radius
+  const generateNearbyLocations = (latitude: number, longitude: number, radiusKm: number) => {
+    const locations = [];
+    for (let i = 0; i < 5; i++) {
+      const angle = Math.random() * 2 * Math.PI;
+      const distance = Math.random() * radiusKm;
+      const dx = distance * Math.cos(angle) / 111; // Convert km to degrees
+      const dy = distance * Math.sin(angle) / 111;
+      locations.push({
+        lat: latitude + dy,
+        lng: longitude + dx,
+      });
+    }
+    return locations;
+  };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -261,7 +506,16 @@ export default function HomeScreen() {
             <Text style={styles.aqiTitle}>Air Quality Index</Text>
           </View>
           <View style={styles.aqiContent}>
-            <Text style={styles.aqiValue}>156</Text>
+            {aqiData ? (
+              <Text style={styles.aqiValue}>{aqiData.aqi + "/ 5" || "N/A"}
+                {/* <Text>5 - Very Bad</Text> */}
+              </Text>
+
+            ) : (
+              <ActivityIndicator size="small" color={THEME.primary} 
+              
+              />
+            )}
             <Text style={styles.aqiCategory}>Unhealthy</Text>
             <View style={styles.aqiScale}>
               <View style={[styles.aqiIndicator, { width: '65%' }]} />
@@ -278,37 +532,36 @@ export default function HomeScreen() {
             {errorMsg ? (
               <Text style={styles.errorText}>{errorMsg}</Text>
             ) : (
-              <LocationMap location={location} errorMsg={errorMsg} />
+              <LocationMap 
+              location={location} 
+              nearbyLocations={nearbyLocations}
+              errorMsg={errorMsg} />
             )}
           </View>
         </View>
         <View style={styles.parametersGrid}>
-          <AirQualityParameter title="PM2.5" value="85" unit="µg/m³" status="poor" />
-          <AirQualityParameter title="PM10" value="120" unit="µg/m³" status="moderate" />
-          <AirQualityParameter title="O₃" value="45" unit="ppb" status="good" />
-          <AirQualityParameter title="NO₂" value="80" unit="ppb" status="moderate" />
+          {aqiData && (
+            <>
+              <AirQualityParameter title="PM2.5" value={aqiData.components.pm2_5.toString()} unit="µg/m³" status="poor" />
+              <AirQualityParameter title="PM10" value={aqiData.components.pm10.toString()} unit="µg/m³" status="moderate" />
+              <AirQualityParameter title="O₃" value={aqiData.components.o3.toString()} unit="ppb" status="good" />
+              <AirQualityParameter title="NO₂" value={aqiData.components.no2.toString()} unit="ppb" status="moderate" />
+            </>
+          )}
         </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Health Advisory</Text>
           <HealthAdvisory
-            level="High Risk Alert"
-            message="Current air quality is unhealthy. People with respiratory conditions should avoid outdoor activities."
+            aqiLevel={aqiData?.aqi || 1}
           />
         </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Preventive Measures</Text>
-          <PreventiveMeasure
-            title="Wear Masks Outdoors"
-            description="Use N95 masks when going outside to protect from harmful particles."
+          <PreventiveMeasures
+            aqiLevel={aqiData?.aqi || 1}
           />
-          <PreventiveMeasure
-            title="Keep Windows Closed"
-            description="During peak pollution hours (morning and evening), keep windows closed."
-          />
-          <PreventiveMeasure
-            title="Use Air Purifying Plants"
-            description="Place air-purifying plants like Snake Plant or Peace Lily in your home."
-          />
+          
+          
         </View>
         <TouchableOpacity style={styles.emergencyButton}>
           <Text style={styles.emergencyButtonText}>Get Medical Help</Text>
