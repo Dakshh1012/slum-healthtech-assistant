@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase';
 import { StyleSheet, View, ScrollView, TouchableOpacity, Modal, TextInput, Image, FlatList, Pressable } from 'react-native';
 import { useState, useEffect } from 'react';
 import * as ImagePicker from 'expo-image-picker';
@@ -43,6 +44,53 @@ export default function CommunityScreen() {
   const [newComment, setNewComment] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('hot');
 
+
+
+const [loading, setLoading] = useState(true);
+
+useEffect(() => {
+  const fetchPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          id,
+          title,
+          content,
+          image_uri,
+          created_at,
+          comments (
+            id,
+            content,
+            created_at
+          ),
+          votes
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Transform data to match frontend format
+      const formattedPosts = data.map((post: any) => ({
+        ...post,
+        timestamp: new Date(post.created_at),
+        imageUri: post.image_uri,
+        comments: post.comments.map((comment: any) => ({
+          ...comment,
+          timestamp: new Date(comment.created_at)
+        }))
+      }));
+
+      setPosts(formattedPosts);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchPosts();
+}, []);
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -78,12 +126,21 @@ export default function CommunityScreen() {
     setPostModalVisible(false);
   };
 
-  const handleVote = (postId: string, value: number) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { ...post, votes: post.votes + value }
-        : post
-    ));
+  const handleVote = async (postId: string, value: number) => {
+    try {
+      const { data, error } = await supabase
+        .rpc('increment_post_votes', { post_id: postId, value })
+      
+      if (error) throw error;
+  
+      setPosts(posts.map(post => 
+        post.id === postId 
+          ? { ...post, votes: data } 
+          : post
+      ));
+    } catch (error) {
+      console.error('Voting error:', error);
+    }
   };
 
   const handleSave = (postId: string) => {
