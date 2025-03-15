@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,9 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import DropDownPicker from 'react-native-dropdown-picker';
 
 const THEME = {
   primary: '#00BFA6',
@@ -43,18 +46,9 @@ const THEME = {
   },
 };
 
-const initialMessages: Message[] = [
-  {
-    id: 1,
-    sender: 'bot',
-    text: 'Hello! I\'m your MediBuddy, your personal healthcare assistant. How can I help you today?',
-    timestamp: new Date(),
-  },
-];
-
 interface Message {
-  id: number;
-  sender: 'user' | 'bot';
+  id: string;
+  sender: 'user' | 'assistant';
   text: string;
   timestamp: Date;
   media?: {
@@ -64,33 +58,63 @@ interface Message {
   };
 }
 
+interface ChatHistory {
+  id: string;
+  model_type: string;
+  message_content: string;
+  created_at: string;
+  media_url?: string;
+  message_type: 'text' | 'image' | 'audio';
+}
+
+const initialMessages: Message[] = [
+  {
+    id: '1',
+    sender: 'assistant',
+    text: 'Hello! I\'m your MediBuddy, your personal healthcare assistant. How can I help you today?',
+    timestamp: new Date(),
+  },
+];
+
 export default function MediBuddyScreen() {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [showMediaOptions, setShowMediaOptions] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('Therapist');
+  const [selectedModel, setSelectedModel] = useState('medibuddy');
   const [previewImage, setPreviewImage] = useState<string | null>(null); // State for image preview
   const [sound, setSound] = useState<Audio.Sound | null>(null); // State for audio playback
   const [isPlaying, setIsPlaying] = useState(false); // State to track if audio is playing
   const scrollViewRef = useRef<ScrollView>(null);
-
-  // Dummy data for past chats
-  const [pastChats, setPastChats] = useState([
-    {
-      id: '1',
-      model: 'Therapist',
-      lastMessage: 'I received your message. Let me analyze it.',
-      timestamp: '2023-10-01T10:00:00Z',
-    },
-    {
-      id: '2',
-      model: 'Doctor',
-      lastMessage: 'With what I see, I think you have...',
-      timestamp: '2023-10-02T12:30:00Z',
-    },
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState([
+    { label: 'MediBuddy', value: 'medibuddy' },
+    { label: 'AI Doctor', value: 'ai_doctor' }
   ]);
+  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+
+  useEffect(() => {
+    fetchChatHistory();
+  }, [selectedModel]);
+
+  const fetchChatHistory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('chats')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('model_type', selectedModel)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (error) throw error;
+      setChatHistory(data || []);
+    } catch (error) {
+      console.error('Error fetching chat history:', error);
+    }
+  };
 
   // Function to handle model selection
   const handleModelSelection = () => {
@@ -109,8 +133,8 @@ export default function MediBuddyScreen() {
   const simulateBotResponse = () => {
     setTimeout(() => {
       const botResponse: Message = {
-        id: Date.now(),
-        sender: 'bot',
+        id: Date.now().toString(),
+        sender: 'assistant',
         text: `I'm the ${selectedModel}. I've received your message.`,
         timestamp: new Date(),
       };
@@ -119,28 +143,155 @@ export default function MediBuddyScreen() {
     }, 1000);
   };
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 1,
-    });
+  // Function to upload media to Supabase storage
+  const uploadMedia = async (uri: string, type: 'image' | 'audio') => {
+    try {
+      if (!uri) {
+        throw new Error('No URI provided');
+      }
 
-    if (!result.canceled) {
-      const newMessage: Message = {
-        id: Date.now(),
-        sender: 'user',
-        text: '',
-        timestamp: new Date(),
-        media: {
-          type: 'image',
-          uri: result.assets[0].uri,
-        },
-      };
-      setMessages([...messages, newMessage]);
-      simulateBotResponse();
+      // For images, we'll read the file first
+      if (type === 'image') {
+        const fileInfo = await FileSystem.getInfoAsync(uri);
+        if (!fileInfo.exists) {
+          throw new Error('File does not exist');
+        }
+
+        // Read the file
+        const response = await fetch(uri as string);
+        if (!response.ok) {
+          throw new Error('Failed to read file');
+        }
+        
+        const blob = await response.blob();
+        if (!blob) {
+          throw new Error('Failed to create blob');
+        }
+
+        // Generate a unique filename
+        const fileName = `${Date.now()}.jpg`;
+        const filePath = `${user?.id}/${type}s/${fileName}`;
+
+        // Upload to Supabase storage
+        const { data, error } = await supabase.storage
+          .from('chat-media')
+          .upload(filePath, blob, {
+            contentType: 'image/jpeg',
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (error) {
+          console.error('Supabase storage error:', error);
+          throw new Error(`Upload failed: ${error.message}`);
+        }
+
+        // Get the public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('chat-media')
+          .getPublicUrl(filePath);
+
+        return publicUrl;
+      }
+
+      // Handle audio uploads
+      await Audio.requestPermissionsAsync();
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      setRecording(recording);
+      setIsRecording(true);
+
+      const audioUri = recording.getURI();
+
+      if (audioUri) {
+        const newMessage: Message = {
+          id: Date.now().toString(),
+          sender: 'user',
+          text: '🎤 Voice message',
+          timestamp: new Date(),
+          media: {
+            type: 'audio',
+            uri: audioUri,
+          },
+        };
+        setMessages([...messages, newMessage]);
+        await storeMessage('🎤 Voice message', 'user', 'audio');
+        simulateBotResponse();
+      }
+
+      return audioUri;
+    } catch (error) {
+      console.error('Error in uploadMedia:', error);
+      Alert.alert(
+        'Upload Error',
+        'Failed to upload media. Please check your internet connection and try again.'
+      );
+      return null;
     }
+  };
 
-    setShowMediaOptions(false);
+  // Function to store message in database
+  const storeMessage = async (
+    content: string,
+    senderType: 'user' | 'assistant',
+    messageType: 'text' | 'audio' | 'image',
+    mediaUrl?: string
+  ) => {
+    try {
+      const { data, error } = await supabase.from('chats').insert({
+        user_id: user?.id,
+        model_type: selectedModel,
+        sender_type: senderType,
+        message_type: messageType,
+        message_content: content,
+        media_url: mediaUrl
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error storing message:', error);
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, // This will be deprecated but still works
+        allowsEditing: true,
+        quality: 0.8,
+        base64: false,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setShowMediaOptions(false);
+        
+        // Show loading indicator or some feedback
+        const mediaUrl = await uploadMedia(result.assets[0].uri, 'image');
+        
+        if (mediaUrl) {
+          const newMessage: Message = {
+            id: Date.now().toString(),
+            sender: 'user',
+            text: '',
+            timestamp: new Date(),
+            media: {
+              type: 'image',
+              uri: mediaUrl,
+            },
+          };
+          setMessages(prev => [...prev, newMessage]);
+          await storeMessage('', 'user', 'image', mediaUrl);
+          simulateBotResponse();
+        }
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
   };
 
   const startRecording = async () => {
@@ -167,7 +318,7 @@ export default function MediBuddyScreen() {
 
       if (uri) {
         const newMessage: Message = {
-          id: Date.now(),
+          id: Date.now().toString(),
           sender: 'user',
           text: '🎤 Voice message',
           timestamp: new Date(),
@@ -177,6 +328,7 @@ export default function MediBuddyScreen() {
           },
         };
         setMessages([...messages, newMessage]);
+        await storeMessage('🎤 Voice message', 'user', 'audio');
         simulateBotResponse();
       }
     } catch (err) {
@@ -187,16 +339,19 @@ export default function MediBuddyScreen() {
     setIsRecording(false);
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (inputText.trim()) {
       const newMessage: Message = {
-        id: Date.now(),
+        id: Date.now().toString(),
         sender: 'user',
         text: inputText.trim(),
         timestamp: new Date(),
       };
       setMessages([...messages, newMessage]);
       setInputText('');
+
+      // Store message in database
+      await storeMessage(inputText.trim(), 'user', 'text');
       simulateBotResponse();
     }
   };
@@ -224,35 +379,151 @@ export default function MediBuddyScreen() {
 
   // Function to handle audio playback
   const handleAudioPlayback = async (uri: string) => {
-    if (sound) {
-      if (isPlaying) {
-        await sound.pauseAsync();
-        setIsPlaying(false);
+    try {
+      if (sound) {
+        // If sound is already loaded
+        if (isPlaying) {
+          await sound.pauseAsync();
+          setIsPlaying(false);
+        } else {
+          await sound.playAsync();
+          setIsPlaying(true);
+        }
       } else {
-        await sound.playAsync();
+        // Load and play new sound
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: true },
+          (status) => {
+            if (status.isLoaded && status.didJustFinish) {
+              setIsPlaying(false);
+              setSound(null);
+            }
+          }
+        );
+        setSound(newSound);
         setIsPlaying(true);
+
+        // Unload sound when finished
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            setIsPlaying(false);
+            setSound(null);
+            newSound.unloadAsync();
+          }
+        });
       }
-    } else {
-      const { sound: newSound } = await Audio.Sound.createAsync({ uri });
-      setSound(newSound);
-      await newSound.playAsync();
-      setIsPlaying(true);
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      Alert.alert('Error', 'Failed to play audio. Please try again.');
     }
   };
 
+  // Modify the ModelSelector component
+  const ModelSelector = () => (
+    <View style={styles.modelSelectorContainer}>
+      <DropDownPicker
+        open={open}
+        value={selectedModel}
+        items={items}
+        setOpen={setOpen}
+        setValue={setSelectedModel}
+        setItems={setItems}
+        style={styles.dropdown}
+        containerStyle={styles.dropdownContainer}
+        labelStyle={styles.dropdownLabel}
+      />
+    </View>
+  );
+
+  // Add this function inside MediBuddyScreen component
+  const handlePastChatClick = (chat: ChatHistory) => {
+    // Add the selected chat message to current messages
+    const newMessage: Message = {
+      id: chat.id,
+      sender: 'user',
+      text: chat.message_content,
+      timestamp: new Date(chat.created_at),
+      ...(chat.media_url && {
+        media: {
+          type: chat.message_type as 'image' | 'audio',
+          uri: chat.media_url,
+        },
+      }),
+    };
+    setMessages([...initialMessages, newMessage]);
+  };
+
+  // Update the PastChatsSection component
+  const PastChatsSection = () => (
+    <View style={styles.pastChatsSection}>
+      <Text style={styles.pastChatsTitle}>Recent Chats</Text>
+      {chatHistory.map((chat) => (
+        <TouchableOpacity
+          key={chat.id}
+          style={styles.pastChatCard}
+          onPress={() => handlePastChatClick(chat)}
+        >
+          <Text style={styles.pastChatMessage}>{chat.message_content}</Text>
+          {chat.media_url && (
+            <View style={styles.pastChatMediaIndicator}>
+              {chat.message_type === 'image' && <ImageIcon size={16} color={THEME.text.light} />}
+              {chat.message_type === 'audio' && <Mic size={16} color={THEME.text.light} />}
+            </View>
+          )}
+          <Text style={styles.pastChatTimestamp}>
+            {new Date(chat.created_at).toLocaleString()}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  // Clean up sound when component unmounts
+  useEffect(() => {
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, [sound]);
+
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.newChatButton} 
+          onPress={() => {
+            setMessages(initialMessages);
+            fetchChatHistory();
+          }}
+        >
+          <MessageCircle size={20} color={THEME.primary} />
+        </TouchableOpacity>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>
+            {selectedModel === 'medibuddy' ? 'MediBuddy' : 'AI Doctor'}
+          </Text>
+        </View>
+        <View style={styles.modelSelectorContainer}>
+          <DropDownPicker
+            open={open}
+            value={selectedModel}
+            items={items}
+            setOpen={setOpen}
+            setValue={setSelectedModel}
+            setItems={setItems}
+            style={styles.dropdown}
+            containerStyle={styles.dropdownContainer}
+            labelStyle={styles.dropdownLabel}
+          />
+        </View>
+      </View>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>MediBuddy</Text>
-          <Text style={styles.headerSubtitle}>Your Personal Health Assistant</Text>
-        </View>
-
         {/* Chat Dialog */}
         <View style={styles.chatCard}>
           <ScrollView
@@ -332,31 +603,11 @@ export default function MediBuddyScreen() {
           </View>
         </View>
 
-        {/* Input Section */}
-
-
         {/* Past Chats Section */}
         <ScrollView>
-        <View style={styles.pastChatsSection}>
-          <Text style={styles.pastChatsTitle}>Past Chats</Text>
-          {pastChats.map((chat) => (
-            <View key={chat.id} style={styles.pastChatCard}>
-              <Text style={styles.pastChatModel}>{chat.model}</Text>
-              <Text style={styles.pastChatMessage}>{chat.lastMessage}</Text>
-              <Text style={styles.pastChatTimestamp}>
-                {new Date(chat.timestamp).toLocaleString()}
-              </Text>
-            </View>
-          ))}
-        </View>
+          <PastChatsSection />
         </ScrollView>
         
-
-        {/* Model Selection Dropdown */}
-        <TouchableOpacity style={styles.modelSelector} onPress={handleModelSelection}>
-          <Text style={styles.modelSelectorText}>{selectedModel}</Text>
-          <ChevronDown size={20} color={THEME.text.secondary} />
-        </TouchableOpacity>
 
         {/* Media Options Modal */}
         <Modal
@@ -417,8 +668,14 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: THEME.card,
     padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
+    height: 60,
+  },
+  headerTitleContainer: {
+    flex: 1,
     alignItems: 'center',
   },
   headerTitle: {
@@ -426,10 +683,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: THEME.text.primary,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: THEME.text.secondary,
-    marginTop: 4,
+  newChatButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: THEME.background,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   chatCard: {
     flex: 1,
@@ -604,11 +864,6 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  pastChatModel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: THEME.text.primary,
-  },
   pastChatMessage: {
     fontSize: 14,
     color: THEME.text.secondary,
@@ -619,24 +874,27 @@ const styles = StyleSheet.create({
     color: THEME.text.light,
     marginTop: 4,
   },
-  modelSelector: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
+  modelSelectorContainer: {
+    width: 150,
+    zIndex: 1000,
+  },
+  dropdown: {
+    backgroundColor: THEME.card,
+    borderColor: 'rgba(0,0,0,0.1)',
+    minHeight: 30,
+    height: 40,
+  },
+  dropdownContainer: {
+    width: '100%',
+  },
+  dropdownLabel: {
+    color: THEME.text.primary,
+    fontSize: 14,
+  },
+  pastChatMediaIndicator: {
+    marginTop: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: THEME.card,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  modelSelectorText: {
-    fontSize: 16,
-    color: THEME.text.primary,
-    marginRight: 8,
+    gap: 4,
   },
 });

@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../lib/supabase';
 import { NGO, Request, RequestMedia } from '../../lib/types';
 import { MessageCircle, Paperclip, Camera, ChevronDown, X } from 'lucide-react-native';
+import DropDownPicker from 'react-native-dropdown-picker';
 
 const THEME = {
   primary: '#00BFA6',
@@ -31,28 +32,36 @@ const THEME = {
   },
 };
 
-const StatusBadge = ({ status } : {status : any}) => {
-  const getStatusConfig = (status : any) => {
+const StatusBadge = ({ status }: { status: string }) => {
+  const getStatusConfig = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending':
         return {
           color: '#FF9800',
           backgroundColor: '#FFF3E0',
+          borderColor: '#FFE0B2',
+          icon: '⏳'
         };
-      case 'in progress':
+      case 'accepted':
         return {
           color: '#00BFA6',
           backgroundColor: '#E0F2F1',
+          borderColor: '#B2DFDB',
+          icon: '✓'
         };
-      case 'resolved':
+      case 'rejected':
         return {
-          color: '#4CAF50',
-          backgroundColor: '#E8F5E9',
+          color: '#FF5252',
+          backgroundColor: '#FFEBEE',
+          borderColor: '#FFCDD2',
+          icon: '✕'
         };
       default:
         return {
           color: THEME.text.secondary,
           backgroundColor: '#F5F5F5',
+          borderColor: '#E0E0E0',
+          icon: '•'
         };
     }
   };
@@ -60,7 +69,8 @@ const StatusBadge = ({ status } : {status : any}) => {
   const config = getStatusConfig(status);
 
   return (
-    <View style={[styles.statusBadge, { backgroundColor: config.backgroundColor }]}>
+    <View style={[styles.statusBadge, { backgroundColor: config.backgroundColor, borderColor: config.borderColor }]}>
+      <Text style={[styles.statusIcon]}>{config.icon}</Text>
       <Text style={[styles.statusText, { color: config.color }]}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Text>
@@ -68,70 +78,51 @@ const StatusBadge = ({ status } : {status : any}) => {
   );
 };
 
-const NGODropdown = ({ selectedNgo, ngos, onSelect } : {selectedNgo: any;
-  ngos: any[];
-  onSelect: (ngo: any) => void;
+const NGODropdownPicker = ({ selectedNgo, ngos, onSelect } : {
+  selectedNgo: NGO | null;
+  ngos: NGO[];
+  onSelect: (ngo: NGO | null) => void;
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(selectedNgo?.id || null);
+  const [items, setItems] = useState(
+    ngos.map(ngo => ({
+      label: `${ngo.name} - ${ngo.address}`,
+      value: ngo.id,
+      ngo: ngo
+    }))
+  );
+
+  useEffect(() => {
+    if (value) {
+      const selected = ngos.find(ngo => ngo.id === value);
+      onSelect(selected || null);
+    } else {
+      onSelect(null);
+    }
+  }, [value]);
 
   return (
-    <>
-      <TouchableOpacity
-        style={styles.dropdownButton}
-        onPress={() => setIsOpen(true)}
-      >
-        <Text style={styles.dropdownText}>
-          {selectedNgo ? selectedNgo.name : 'Select NGO'}
-        </Text>
-        <ChevronDown size={20} color={THEME.text.secondary} />
-      </TouchableOpacity>
-
-      <Modal
-        visible={isOpen}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setIsOpen(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setIsOpen(false)}
-        >
-          <View style={styles.dropdownModal}>
-            <View style={styles.dropdownHeader}>
-              <Text style={styles.dropdownTitle}>Select NGO</Text>
-              <TouchableOpacity onPress={() => setIsOpen(false)}>
-                <X size={24} color={THEME.text.secondary} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.dropdownList}>
-              {ngos.map((ngo : NGO) => (
-                <TouchableOpacity
-                  key={ngo.id}
-                  style={[
-                    styles.dropdownItem,
-                    selectedNgo?.id === ngo.id && styles.dropdownItemSelected
-                  ]}
-                  onPress={() => {
-                    onSelect(ngo);
-                    setIsOpen(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.dropdownItemText,
-                    selectedNgo?.id === ngo.id && styles.dropdownItemTextSelected
-                  ]}>
-                    {ngo.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </>
+    <DropDownPicker
+      open={open}
+      value={value}
+      items={items}
+      setOpen={setOpen}
+      setValue={setValue}
+      setItems={setItems}
+      placeholder="Select NGO"
+      style={styles.dropdownPicker}
+      textStyle={styles.dropdownPickerText}
+      dropDownContainerStyle={styles.dropdownContainer}
+      listItemContainerStyle={styles.dropdownItemContainer}
+      selectedItemContainerStyle={styles.dropdownSelectedItem}
+      searchable={true}
+      searchPlaceholder="Search NGO..."
+      zIndex={1000}
+    />
   );
 };
+
 const SeverityButton = ({
   level,
   selected,
@@ -355,6 +346,30 @@ export default function ComplaintsScreen() {
     }
   };
 
+  // Function to upload complaint media
+  const uploadComplaintMedia = async (uri: string, type: 'image' | 'audio') => {
+    try {
+      const extension = uri.split('.').pop();
+      const fileName = `${Date.now()}.${extension}`;
+      const filePath = `complaints/${type}s/${fileName}`;
+
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      const { data, error } = await supabase.storage
+        .from('chat-media')
+        .upload(filePath, blob);
+
+      if (error) throw error;
+
+      const mediaUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/chat-media/${filePath}`;
+      return mediaUrl;
+    } catch (error) {
+      console.error('Error uploading complaint media:', error);
+      return null;
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -362,25 +377,13 @@ export default function ComplaintsScreen() {
         <Text style={styles.headline}>Let your voice be heard!</Text>
 
         {/* NGO Selection */}
-        <View style={styles.dropdownContainer}>
-          <Text style={styles.dropdownLabel}>Select NGO:</Text>
-          <TouchableOpacity
-            style={styles.dropdownButton}
-            onPress={() => {
-              Alert.alert(
-                "Select NGO",
-                "",
-                ngos.map((ngo) => ({
-                  text: `${ngo.name} - ${ngo.address}`, // Show more NGO info
-                  onPress: () => setSelectedNgo(ngo),
-                }))
-              );
-            }}
-          >
-            <Text style={styles.dropdownText}>
-              {selectedNgo ? selectedNgo.name : "Select NGO"}
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Select NGO:</Text>
+          <NGODropdownPicker
+            selectedNgo={selectedNgo}
+            ngos={ngos}
+            onSelect={setSelectedNgo}
+          />
         </View>
 
         {/* Complaint Input */}
@@ -473,6 +476,12 @@ export default function ComplaintsScreen() {
             <Text style={styles.pastRequestsTitle}>Your Past Requests</Text>
             {pastRequests.map((request) => (
               <View key={request.id} style={styles.requestCard}>
+                <View style={styles.requestHeader}>
+                  <Text style={styles.requestDate}>
+                    {new Date(request.created_at).toLocaleDateString()}
+                  </Text>
+                  <StatusBadge status={request.status} />
+                </View>
                 <Text style={styles.requestText}>{request.message}</Text>
                 <Text style={styles.requestText}>
                   Address: {request.address}
@@ -498,13 +507,6 @@ export default function ComplaintsScreen() {
                     </View>
                   </View>
                 )}
-                <Text
-                  style={[styles.requestStatus, getStatusStyle(request.status)]}
-                >
-                  Status:{" "}
-                  {request.status.charAt(0).toUpperCase() +
-                    request.status.slice(1)}
-                </Text>
               </View>
             ))}
           </View>
@@ -615,10 +617,16 @@ const styles = StyleSheet.create({
     color: THEME.text.secondary,
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    alignSelf: 'flex-start',
+    borderWidth: 1,
+  },
+  statusIcon: {
+    marginRight: 4,
+    fontSize: 12,
   },
   statusText: {
     fontSize: 12,
@@ -626,18 +634,29 @@ const styles = StyleSheet.create({
   },
 
   dropdownContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
+    borderColor: '#E5E7EB',
+    backgroundColor: THEME.card,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  dropdownLabel: {
-    fontSize: 16,
-    color: THEME.text.secondary,
-    marginRight: 10,
+  dropdownPicker: {
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    backgroundColor: THEME.card,
   },
-  dropdownText: {
+  dropdownPickerText: {
     fontSize: 16,
     color: THEME.text.primary,
+  },
+  dropdownItemContainer: {
+    borderBottomColor: '#E5E7EB',
+  },
+  dropdownSelectedItem: {
+    backgroundColor: '#E0F2F1',
   },
   imageUploadContainer: {
     marginBottom: 20,
@@ -788,5 +807,18 @@ const styles = StyleSheet.create({
   selectedSeverityButtonText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  formGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    color: THEME.text.secondary,
+    marginBottom: 8,
+  },
+  dropdownLabel: {
+    fontSize: 16,
+    color: THEME.text.secondary,
+    marginBottom: 8,
   },
 });
