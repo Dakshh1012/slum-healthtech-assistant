@@ -415,7 +415,7 @@ const ProfileAvatar = () => {
   
   return (
     <TouchableOpacity 
-      onPress={() => router.push('/profile/rahul')}
+      onPress={() => router.push('./profile/rahul')}
       style={styles.avatarContainer}
     >
       <Image 
@@ -582,9 +582,7 @@ export default function HomeScreen() {
           
           
         </View>
-        <TouchableOpacity style={styles.emergencyButton}>
-          <Text style={styles.emergencyButtonText}>Get Medical Help</Text>
-        </TouchableOpacity>
+        
       </ScrollView>
     </SafeAreaView>
   );
