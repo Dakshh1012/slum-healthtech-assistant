@@ -74,6 +74,36 @@ export default function MediBuddyScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [showMediaOptions, setShowMediaOptions] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  // State to manage the currently playing audio
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Function to open image preview
+  const openImagePreview = (uri: string) => {
+    setPreviewImage(uri);
+  };
+
+  // Function to close image preview
+  const closeImagePreview = () => {
+    setPreviewImage(null);
+  };
+  // Function to play audio
+  const playAudio = async (uri: string) => {
+    if (sound) {
+      await sound.unloadAsync(); // Unload any previously loaded audio
+      setSound(null);
+    }
+
+    const newSound = new Audio.Sound();
+    try {
+      await newSound.loadAsync({ uri });
+      await newSound.playAsync();
+      setSound(newSound); // Set the current sound
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      Alert.alert('Failed to play audio');
+    }
+  };
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -229,14 +259,18 @@ export default function MediBuddyScreen() {
               ]}
             >
               {message.media?.type === 'image' && (
-                <Image
-                  source={{ uri: message.media.uri }}
-                  style={styles.messageImage}
-                />
+                <TouchableOpacity onPress={() => message.media && openImagePreview(message.media.uri)}>
+                  <Image
+                    source={{ uri: message.media.uri }}
+                    style={styles.messageImage}
+                  />
+                </TouchableOpacity>
               )}
               {message.media?.type === 'audio' && (
                 <View style={styles.audioContainer}>
-                  <Mic size={20} color={message.sender === 'user' ? '#fff' : THEME.primary} />
+                  <TouchableOpacity onPress={() => message.media && playAudio(message.media.uri)}>
+                    <Mic size={20} color={message.sender === 'user' ? '#fff' : THEME.primary} />
+                  </TouchableOpacity>
                   <Text style={[
                     styles.messageText,
                     message.sender === 'user' && styles.userMessageText
@@ -262,7 +296,18 @@ export default function MediBuddyScreen() {
             </View>
           ))}
         </ScrollView>
-
+        <Modal visible={!!previewImage} transparent onRequestClose={closeImagePreview}>
+          <View style={styles.imagePreviewOverlay}>
+            <TouchableOpacity style={styles.closePreviewButton} onPress={closeImagePreview}>
+              <X size={24} color="#fff" />
+            </TouchableOpacity>
+            <Image
+              source={{ uri: previewImage || '' }}
+              style={styles.fullScreenImage}
+              resizeMode="contain"
+            />
+          </View>
+        </Modal>
         <View style={styles.inputContainer}>
           <TouchableOpacity
             style={styles.iconButton}
@@ -445,6 +490,22 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: THEME.text.light,
+  },
+  imagePreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closePreviewButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 1,
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
   },
   modalOverlay: {
     flex: 1,
