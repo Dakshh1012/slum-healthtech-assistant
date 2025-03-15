@@ -56,14 +56,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="ai_therapist"
         options={{
-          title: 'AI Therapy',
+          title: 'Community',
           tabBarIcon: ({ color }) => <MessageCircle size={24} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="news"
+        name="complaints"
         options={{
-          title: 'Petitions',
+          title: 'Complaints',
           tabBarIcon: ({ color }) => <Newspaper size={24} color={color} />,
         }}
       />
