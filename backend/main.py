@@ -14,6 +14,7 @@ from voice_of_the_doctor import text_to_speech_with_gtts_old
 GROQ_API_KEY="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"
 app = Flask(__name__)
 
+
 # Initialize CORS
 CORS(app)
 
@@ -74,7 +75,7 @@ def generate_response(user_input):
             "Use conversational language with occasional filler words, brief pauses (indicated by '...'), "
             "and varied sentence lengths to sound more human. Express genuine empathy. "
             "Limit responses to 3-4 sentences for a natural conversational pace. "
-            "Avoid sounding too formal or robotic. Just be warm and human."
+            "Avoid sounding too formal or robotic. Just be warm and human dont give too many solutions give more sympathy."
             "\n\nClient: " + user_input + "\nAlex:"
         )
 
@@ -147,81 +148,46 @@ def text_to_speech(text, lang="en", output_file="response.mp3"):
 # Single Route for AI Therapist
 @app.route("/therapist", methods=["POST"])
 def therapist_route():
-    # Check if an audio file is uploaded
-    if "audio" not in request.files:
-        return jsonify({"error": "No audio file provided"}), 400
+    # Check if text input is provided
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 400
 
-    audio_file = request.files["audio"]
-    if audio_file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
+    data = request.get_json()
+    user_input = data.get("text")  # Get the text input from the JSON payload
 
-    # Check file size (e.g., at least 1 KB)
-    audio_file.seek(0, os.SEEK_END)
-    file_size = audio_file.tell()
-    audio_file.seek(0)
-    if file_size < 1024:  # 1 KB
-        return jsonify({"error": "File is too small or empty"}), 400
-
-    # Save the file with a unique name to avoid conflicts
-    timestamp = int(time.time())
-    audio_path = f"user_audio_{timestamp}.wav"
-    audio_file.save(audio_path)
-
-    # Debug: Check if the file is a valid WAV file
-    try:
-        with wave.open(audio_path, "rb") as wav_file:
-            print(f"Audio file details: {wav_file.getparams()}")
-    except wave.Error:
-        os.remove(audio_path)  # Delete the invalid file
-        return jsonify({"error": "Invalid WAV file"}), 400
-
-    # Step 1: Convert speech to text
-    user_input = speech_to_text(audio_path)
-    if "sorry" in user_input.lower():
-        os.remove(audio_path)  # Delete the file if speech recognition fails
-        return jsonify({"error": "Could not understand the audio"}), 400
+    if not user_input:
+        return jsonify({"error": "No text input provided"}), 400
 
     # Get the user's language preference (default to English)
-    user_lang = request.form.get("lang", "en")  # e.g., "es" for Spanish, "fr" for French
-    
+    user_lang = data.get("lang", "en")  # e.g., "es" for Spanish, "fr" for French
+
     # Auto-detect Hindi (or other languages) if needed
     if "mujhe" in user_input.lower() or "kyunki" in user_input.lower() or "nahin" in user_input.lower():
         user_lang = "hi"  # Set to Hindi if Hindi words detected
         print(f"Hindi detected in input. Setting language to Hindi.")
 
-    # Step 2: Translate user input to English (if not already in English)
+    # Step 1: Translate user input to English (if not already in English)
     if user_lang != "en":
         user_input_en = translate_text(user_input, target_lang="en")
     else:
         user_input_en = user_input
 
-    # Step 3: Generate a response using Gemini
+    # Step 2: Generate a response using Gemini
     therapist_response_en = generate_response(user_input_en)
 
-    # Step 4: Translate the therapist's response to the user's language
+    # Step 3: Translate the therapist's response to the user's language
     if user_lang != "en":
         therapist_response = translate_text(therapist_response_en, target_lang=user_lang)
     else:
         therapist_response = therapist_response_en
 
-    # Step 5: Convert the response to speech in the user's language
-    speech_file = text_to_speech(therapist_response, lang=user_lang)
-    if not speech_file:
-        os.remove(audio_path)  # Delete the temporary file
-        return jsonify({"error": "Failed to generate speech file"}), 500
-
-    # Clean up temporary files
-    os.remove(audio_path)
-
-    # Return the response as JSON and the audio file
+    # Return the response as JSON
     return jsonify({
         "user_input": user_input,
         "user_input_en": user_input_en,
         "therapist_response": therapist_response,
-        "therapist_response_en": therapist_response_en,
-        "audio_file": f"/download/{speech_file}"
+        "therapist_response_en": therapist_response_en
     })
-
 def detect_language(text):
     """
     Simple language detection based on common words and patterns.
@@ -319,7 +285,7 @@ def doctor_consultation():
             query=system_prompt + " " + speech_to_text_output,
             encoded_image=encode_image(image_filepath),
             model="llama-3.2-11b-vision-preview"
-        )
+        )   
 
         # Step 4: Translate the doctor's response if needed
         if detected_lang in ["hi", "mr"]:
@@ -369,6 +335,7 @@ your response. Your response should be in one long paragraph. Always answer as i
 Do not say 'In the image I see' but say 'With what I see, I think you have ....'
 Do not respond as an AI model, your answer should mimic that of an actual doctor, not an AI bot. 
 Keep your answer concise (max 2 sentences). No preamble, start your answer right away please. and also suggest 1-2 home remedies."""
+
 
 if __name__ == "__main__":
     app.run(debug=True)

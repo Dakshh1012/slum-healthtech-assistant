@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -18,6 +17,7 @@ import { supabase } from '../../lib/supabase';
 import { NGO, Request, RequestMedia } from '../../lib/types';
 import { MessageCircle, Paperclip, Camera, ChevronDown, X } from 'lucide-react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
+import TranslatedText from '../../components/TranslatedText';
 
 const THEME = {
   primary: '#00BFA6',
@@ -71,10 +71,12 @@ const StatusBadge = ({ status }: { status: string }) => {
 
   return (
     <View style={[styles.statusBadge, { backgroundColor: config.backgroundColor, borderColor: config.borderColor }]}>
-      <Text style={[styles.statusIcon]}>{config.icon}</Text>
-      <Text style={[styles.statusText, { color: config.color }]}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Text>
+      <TranslatedText style={[styles.statusIcon]} textKey={`status.icon.${status.toLowerCase()}`} fallback={config.icon} />
+      <TranslatedText 
+        style={[styles.statusText, { color: config.color }]} 
+        textKey={`status.${status.toLowerCase()}`}
+        fallback={status.charAt(0).toUpperCase() + status.slice(1)}
+      />
     </View>
   );
 };
@@ -145,15 +147,15 @@ const SeverityButton = ({
     ]}
     onPress={onPress}
   >
-    <Text
+    <TranslatedText
       style={[
         styles.severityButtonText,
         selected && styles.selectedSeverityButtonText,
         !selected && { color },
       ]}
-    >
-      {level.charAt(0).toUpperCase() + level.slice(1)}
-    </Text>
+      textKey={`severity.${level}`}
+      fallback={level.charAt(0).toUpperCase() + level.slice(1)}
+    />
   </TouchableOpacity>
 );
 
@@ -478,25 +480,27 @@ export default function ComplaintsScreen() {
             renderItem={({ item: request }) => (
               <View style={styles.requestCard}>
                 <View style={styles.requestHeader}>
-                  <Text style={styles.requestDate}>
-                    {new Date(request.created_at).toLocaleDateString()}
-                  </Text>
+                  <TranslatedText style={styles.requestDate} textKey="complaints.date" fallback={new Date(request.created_at).toLocaleDateString()} />
                   <StatusBadge status={request.status} />
                 </View>
-                <Text style={styles.requestText}>{request.message}</Text>
-                <Text style={styles.requestText}>
-                  Address: {request.address}
-                </Text>
-                <Text style={styles.requestSeverity}>
-                  Severity:{" "}
-                  {request.severity.charAt(0).toUpperCase() +
-                    request.severity.slice(1)}
-                </Text>
+                <TranslatedText style={styles.requestText} textKey={`request.${request.id}.message`} fallback={request.message} />
+                <TranslatedText 
+                  style={styles.requestText} 
+                  textKey="complaints.address" 
+                  fallback={`Address: ${request.address}`} 
+                />
+                <TranslatedText 
+                  style={styles.requestSeverity} 
+                  textKey={`complaints.severityLabel`}
+                  fallback={`Severity: ${request.severity.charAt(0).toUpperCase() + request.severity.slice(1)}`} 
+                />
                 {request.media && request.media.length > 0 && (
                   <View style={styles.requestImagesContainer}>
-                    <Text style={styles.requestImagesLabel}>
-                      Attached Images:
-                    </Text>
+                    <TranslatedText 
+                      style={styles.requestImagesLabel} 
+                      textKey="complaints.attachedImages" 
+                      fallback="Attached Images:" 
+                    />
                     <View style={styles.requestImagesPreview}>
                       {request.media.map((media, index) => (
                         <Image
