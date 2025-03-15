@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, Dimensions, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Bell, TriangleAlert as AlertTriangle, Shield, Wind, Map as MapIcon, Globe } from 'lucide-react-native';
 import * as Location from 'expo-location';
@@ -214,7 +214,7 @@ const AirQualityParameter: React.FC<AirQualityParameterProps> = ({ title, value,
   <View style={[styles.parameter, { borderLeftColor: getStatusColor(status), borderLeftWidth: 4 }]}>
     <TranslatedText textKey={title} style={styles.parameterTitle} />
     <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-      <Text style={styles.parameterValue}>{value}</Text>
+      <TranslatedText textKey={value} style={styles.parameterValue} />
       <TranslatedText textKey={unit} style={styles.parameterUnit} />
     </View>
     <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(status) }]}>
@@ -371,7 +371,7 @@ const LocationMap = ({ location, nearbyLocations, errorMsg }: { location: Locati
   if (!location) {
     return (
       <View style={styles.mapLoadingContainer}>
-        <Text style={styles.errorText}>No location data available</Text>
+        <TranslatedText textKey="No location data available" style={styles.errorText} />
       </View>
     );
   }
@@ -524,8 +524,8 @@ const getAqiMessage = (aqi: number) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Hello, Rahul</Text>
-          <Text style={styles.date}>{`${location?.longitude}, ${location?.latitude}`}</Text>
+          <TranslatedText textKey="Hello, Rahul" style={styles.greeting} />
+          <TranslatedText textKey={`${location?.longitude}, ${location?.latitude}`} style={styles.date} fallback="Loading location..." />
         </View>
         <View style={styles.headerIcons}>
           <LanguagePicker />
@@ -563,7 +563,7 @@ const getAqiMessage = (aqi: number) => {
               <TranslatedText textKey="Air Quality Map" style={styles.mapTitle} />
             </View>
             {errorMsg ? (
-              <Text style={styles.errorText}>{errorMsg}</Text>
+              <TranslatedText textKey={errorMsg} style={styles.errorText} />
             ) : (
               <LocationMap 
               location={location} 
