@@ -62,13 +62,14 @@ interface Message {
 
 interface ChatHistory {
   id: string;
-  model_type: string;
+  chat_id: string;
+  sender_type: "user" | "assistant";
+  message_type: "text" | "image" | "audio";
   message_content: string;
   created_at: string;
   media_url?: string;
-  message_type: "text" | "image" | "audio";
+  chat_created_at: string;
 }
-
 
 const initialMessages: Message[] = [
   {
@@ -94,29 +95,65 @@ export default function MediBuddyScreen() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([
     { label: "MediBuddy", value: "medibuddy" },
-    { label: "AI Doctor", value: "ai_doctor" },
+    { label: "ThereBuddy", value: "ai_doctor" },
   ]);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
   const [ngos, setNgos] = useState<NGO[]>([]);
 
   useEffect(() => {
-    fetchChatHistory();
+    const initializeChat = async () => {
+      const initialMsg = getInitialMessage(selectedModel)[0];
+      setMessages([initialMsg]);
+      // Store initial greeting in database
+      await storeMessage(initialMsg.text, "assistant", "text");
+      fetchChatHistory();
+    };
+
+    initializeChat();
   }, [selectedModel]);
 
   const fetchChatHistory = async () => {
     try {
-      const { data, error } = await supabase
+      // First get all chats for this user and model
+      const { data: chats, error: chatsError } = await supabase
         .from("chats")
-        .select("*")
+        .select("id, created_at")
         .eq("user_id", user?.id)
         .eq("model_type", selectedModel)
         .order("created_at", { ascending: false })
-        .limit(3);
+        .limit(5); // Get last 5 chats
 
-      if (error) throw error;
-      setChatHistory(data || []);
+      if (chatsError) throw chatsError;
+
+      if (!chats || chats.length === 0) {
+        setChatHistory([]);
+        return;
+      }
+
+      // For each chat, get the last message
+      const chatHistoryPromises = chats.map(async (chat) => {
+        const { data: lastMessage, error: messageError } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("chat_id", chat.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (messageError) throw messageError;
+
+        return {
+          ...lastMessage,
+          chat_id: chat.id,
+          chat_created_at: chat.created_at
+        };
+      });
+
+      const chatHistoryResults = await Promise.all(chatHistoryPromises);
+      setChatHistory(chatHistoryResults);
     } catch (error) {
       console.error("Error fetching chat history:", error);
+      Alert.alert("Error", "Failed to fetch chat history");
     }
   };
 
@@ -134,17 +171,29 @@ export default function MediBuddyScreen() {
   };
 
   // Function to simulate bot response
-  const simulateBotResponse = () => {
-    setTimeout(() => {
+  const simulateBotResponse = async () => {
+    try {
       const botResponse: Message = {
         id: Date.now().toString(),
         sender: "assistant",
         text: `I'm the ${selectedModel}. I've received your message.`,
         timestamp: new Date(),
       };
+      
       setMessages((prevMessages) => [...prevMessages, botResponse]);
+      
+      // Store the assistant's response in the database
+      await storeMessage(
+        botResponse.text,
+        "assistant",
+        "text"
+      );
+      
       scrollToBottom();
-    }, 1000);
+    } catch (error) {
+      console.error("Error storing assistant response:", error);
+      Alert.alert("Error", "Failed to store assistant response");
+    }
   };
 
   // Function to upload media to Supabase storage
@@ -188,7 +237,7 @@ export default function MediBuddyScreen() {
       const { data, error } = await supabase.storage
         .from("chat-media")
         .upload(filePath, blob, {
-          contentType: type === "image" ? "image/jpeg" : "audio/m4a",
+          contentType: type === "image" ? "image/*" : "audio/*",
           cacheControl: "3600",
           upsert: true,
         });
@@ -226,9 +275,38 @@ export default function MediBuddyScreen() {
     mediaUrl?: string
   ) => {
     try {
-      const { data, error } = await supabase.from("chats").insert({
-        user_id: user?.id,
-        model_type: selectedModel,
+      let chatId;
+
+      if (messages.length <= 1) { // Only initial message exists
+        // Create new chat
+        const { data: newChat, error: chatError } = await supabase
+          .from("chats")
+          .insert({
+            user_id: user?.id,
+            model_type: selectedModel,
+            sender_type: senderType
+          })
+          .select()
+          .single();
+
+        if (chatError) throw chatError;
+        chatId = newChat.id;
+      } else {
+        // Get the current chat ID from the most recent message
+        const { data: currentChat, error: chatQueryError } = await supabase
+          .from("messages")
+          .select("chat_id")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (chatQueryError) throw chatQueryError;
+        chatId = currentChat.chat_id;
+      }
+
+      // Store the message
+      const { data, error } = await supabase.from("messages").insert({
+        chat_id: chatId,
         sender_type: senderType,
         message_type: messageType,
         message_content: content,
@@ -239,6 +317,7 @@ export default function MediBuddyScreen() {
       return data;
     } catch (error) {
       console.error("Error storing message:", error);
+      throw error;
     }
   };
 
@@ -270,7 +349,7 @@ export default function MediBuddyScreen() {
           };
           setMessages((prev) => [...prev, newMessage]);
           await storeMessage("", "user", "image", mediaUrl);
-          simulateBotResponse();
+          await simulateBotResponse();
         }
       }
     } catch (error) {
@@ -320,7 +399,7 @@ export default function MediBuddyScreen() {
           };
           setMessages([...messages, newMessage]);
           await storeMessage("🎤 Voice message", "user", "audio", mediaUrl);
-          simulateBotResponse();
+          await simulateBotResponse();
         }
       }
     } catch (err) {
@@ -334,18 +413,26 @@ export default function MediBuddyScreen() {
 
   const handleSendMessage = async () => {
     if (inputText.trim()) {
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        sender: "user",
-        text: inputText.trim(),
-        timestamp: new Date(),
-      };
-      setMessages([...messages, newMessage]);
-      setInputText("");
+      try {
+        const newMessage: Message = {
+          id: Date.now().toString(),
+          sender: "user",
+          text: inputText.trim(),
+          timestamp: new Date(),
+        };
+        setMessages([...messages, newMessage]);
+        setInputText("");
 
-      // Store message in database
-      await storeMessage(inputText.trim(), "user", "text");
-      simulateBotResponse();
+        // Store user message in database
+        await storeMessage(inputText.trim(), "user", "text");
+        await simulateBotResponse(); // Wait for bot response to be stored
+      } catch (error) {
+        console.error("Error sending message:", error);
+        Alert.alert(
+          "Error",
+          "Failed to send message. Please try again."
+        );
+      }
     }
   };
 
@@ -429,22 +516,46 @@ export default function MediBuddyScreen() {
     </View>
   );
 
-  // Add this function inside MediBuddyScreen component
-  const handlePastChatClick = (chat: ChatHistory) => {
-    // Add the selected chat message to current messages
-    const newMessage: Message = {
-      id: chat.id,
-      sender: "user",
-      text: chat.message_content,
-      timestamp: new Date(chat.created_at),
-      ...(chat.media_url && {
-        media: {
-          type: chat.message_type as "image" | "audio",
-          uri: chat.media_url,
-        },
-      }),
-    };
-    setMessages([...initialMessages, newMessage]);
+  // Modify the handlePastChatClick function
+  const handlePastChatClick = async (chat: ChatHistory) => {
+    try {
+      // Fetch all messages for this specific chat
+      const { data: chatMessages, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("chat_id", chat.chat_id)
+        .order("created_at", { ascending: true }); // Order by timestamp ascending
+
+      if (error) throw error;
+
+      if (!chatMessages || chatMessages.length === 0) {
+        console.log("No messages found for this chat");
+        return;
+      }
+
+      // Convert messages to the Message format
+      const formattedMessages = chatMessages.map((msg): Message => ({
+        id: msg.id,
+        sender: msg.sender_type as "user" | "assistant",
+        text: msg.message_content,
+        timestamp: new Date(msg.created_at),
+        ...(msg.media_url && {
+          media: {
+            type: msg.message_type as "image" | "audio",
+            uri: msg.media_url,
+          },
+        }),
+      }));
+
+      // Update the messages state
+      setMessages(formattedMessages);
+      
+      // Scroll to bottom after loading messages
+      setTimeout(() => scrollToBottom(), 100);
+    } catch (error) {
+      console.error("Error loading chat messages:", error);
+      Alert.alert("Error", "Failed to load chat messages");
+    }
   };
 
   const fetchNGOs = async () => {
@@ -463,13 +574,32 @@ export default function MediBuddyScreen() {
     }
   };
 
+  // Create a function to get initial message based on selected model
+  const getInitialMessage = (modelType: string): Message[] => {
+    if (modelType === "medibuddy") {
+      return [{
+        id: "1",
+        sender: "assistant",
+        text: "Hello! I'm your MediBuddy, your personal healthcare assistant. How can I help you today?",
+        timestamp: new Date(),
+      }];
+    } else {
+      return [{
+        id: "1",
+        sender: "assistant",
+        text: "Hi! I'm ThereBuddy, your mental health companion. I'm here to listen and support you. How are you feeling today?",
+        timestamp: new Date(),
+      }];
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.newChatButton}
           onPress={() => {
-            setMessages(initialMessages);
+            setMessages(getInitialMessage(selectedModel));
             fetchChatHistory();
           }}
         >
@@ -477,7 +607,7 @@ export default function MediBuddyScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            {selectedModel === "medibuddy" ? "MediBuddy" : "AI Doctor"}
+            {selectedModel === "medibuddy" ? "MediBuddy" : "ThereBuddy"}
           </Text>
         </View>
         <View style={styles.modelSelectorContainer}>
@@ -507,50 +637,40 @@ export default function MediBuddyScreen() {
               <View
                 style={[
                   styles.messageBubble,
-                  message.sender === "user"
-                    ? styles.userMessage
-                    : styles.botMessage,
+                  message.sender === "user" ? styles.userMessage : styles.botMessage,
                 ]}
               >
                 {message.media?.type === "image" && (
                   <TouchableOpacity
-                    onPress={() =>
-                      message.media && openImagePreview(message.media.uri)
-                    }
+                    onPress={() => message.media && openImagePreview(message.media.uri)}
                   >
                     <Image
                       source={{ uri: message.media.uri }}
-                      style={styles.messageImage}
+                      style={[
+                        styles.messageImage,
+                        message.sender === "user" ? styles.userMessageImage : styles.botMessageImage
+                      ]}
                     />
                   </TouchableOpacity>
                 )}
                 {message.media?.type === "audio" && (
-                  <View style={styles.audioContainer}>
+                  <View style={[
+                    styles.audioContainer,
+                    message.sender === "user" ? styles.userAudioContainer : styles.botAudioContainer
+                  ]}>
                     <TouchableOpacity
-                      onPress={() =>
-                        message.media && handleAudioPlayback(message.media.uri)
-                      }
+                      onPress={() => message.media && handleAudioPlayback(message.media.uri)}
                     >
                       {isPlaying ? (
-                        <Pause
-                          size={20}
-                          color={
-                            message.sender === "user" ? "#fff" : THEME.primary
-                          }
-                        />
+                        <Pause size={20} color={message.sender === "user" ? "#fff" : THEME.primary} />
                       ) : (
-                        <Play
-                          size={20}
-                          color={
-                            message.sender === "user" ? "#fff" : THEME.primary
-                          }
-                        />
+                        <Play size={20} color={message.sender === "user" ? "#fff" : THEME.primary} />
                       )}
                     </TouchableOpacity>
                     <Text
                       style={[
                         styles.messageText,
-                        message.sender === "user" && styles.userMessageText,
+                        message.sender === "user" ? styles.userMessageText : styles.botMessageText,
                       ]}
                     >
                       Voice Message
@@ -561,7 +681,7 @@ export default function MediBuddyScreen() {
                   <Text
                     style={[
                       styles.messageText,
-                      message.sender === "user" && styles.userMessageText,
+                      message.sender === "user" ? styles.userMessageText : styles.botMessageText,
                     ]}
                   >
                     {message.text}
@@ -570,7 +690,7 @@ export default function MediBuddyScreen() {
                 <Text
                   style={[
                     styles.messageTime,
-                    message.sender === "user" && styles.userMessageTime,
+                    message.sender === "user" ? styles.userMessageTime : styles.botMessageTime,
                   ]}
                 >
                   {formatTime(message.timestamp)}
@@ -628,7 +748,12 @@ export default function MediBuddyScreen() {
               style={styles.pastChatCard}
               onPress={() => handlePastChatClick(chat)}
             >
-              <Text style={styles.pastChatMessage}>{chat.message_content}</Text>
+              <Text style={styles.pastChatTimestamp}>
+                {new Date(chat.chat_created_at).toLocaleDateString()}
+              </Text>
+              <Text style={styles.pastChatMessage} numberOfLines={2}>
+                {chat.message_content}
+              </Text>
               {chat.media_url && (
                 <View style={styles.pastChatMediaIndicator}>
                   {chat.message_type === "image" && (
@@ -639,9 +764,6 @@ export default function MediBuddyScreen() {
                   )}
                 </View>
               )}
-              <Text style={styles.pastChatTimestamp}>
-                {new Date(chat.created_at).toLocaleString()}
-              </Text>
             </TouchableOpacity>
           )}
           style={styles.pastChatsSection}
@@ -756,21 +878,23 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   messageBubble: {
-    maxWidth: "80%",
+    maxWidth: '80%',
     padding: 12,
     borderRadius: 16,
     marginBottom: 10,
   },
   userMessage: {
-    alignSelf: "flex-end",
+    alignSelf: 'flex-end',
     backgroundColor: THEME.primary,
     borderBottomRightRadius: 4,
+    marginLeft: '20%',
   },
   botMessage: {
-    alignSelf: "flex-start",
+    alignSelf: 'flex-start',
     backgroundColor: THEME.card,
     borderBottomLeftRadius: 4,
-    shadowColor: "#000",
+    marginRight: '20%',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -782,16 +906,21 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   userMessageText: {
-    color: "#fff",
+    color: '#fff',
+  },
+  botMessageText: {
+    color: THEME.text.primary,
   },
   messageTime: {
     fontSize: 11,
-    color: THEME.text.light,
     marginTop: 4,
-    alignSelf: "flex-end",
+    alignSelf: 'flex-end',
   },
   userMessageTime: {
-    color: "rgba(255,255,255,0.8)",
+    color: 'rgba(255,255,255,0.8)',
+  },
+  botMessageTime: {
+    color: THEME.text.light,
   },
   messageImage: {
     width: 200,
@@ -799,9 +928,25 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 8,
   },
+  userMessageImage: {
+    alignSelf: 'flex-end',
+  },
+  botMessageImage: {
+    alignSelf: 'flex-start',
+  },
   audioContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  userAudioContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  botAudioContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   inputContainer: {
