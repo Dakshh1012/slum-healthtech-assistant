@@ -61,9 +61,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="news"
+        name="complaints"
         options={{
-          title: 'Petitions',
+          title: 'Complaints',
           tabBarIcon: ({ color }) => <Newspaper size={24} color={color} />,
         }}
       />

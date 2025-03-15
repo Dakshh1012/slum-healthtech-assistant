@@ -92,7 +92,7 @@ export default function Index() {
         >
           <Image
             source={onboardingData[currentIndex].image}
-            className="w-90 h-90"
+            className="h-90 w-90"
             resizeMode="contain"
           />
         </Animated.View>
