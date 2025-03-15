@@ -2,3 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+.shadow-lg {
+  shadow-color: #000;
+  shadow-offset: 0px 4px;
+  shadow-opacity: 0.15;
+  shadow-radius: 8px;
+  elevation: 8;
+}
+
+.bg-gradient-to-b {
+  background:  #07A996 
+
+}
+
