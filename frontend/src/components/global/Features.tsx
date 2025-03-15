@@ -14,32 +14,42 @@ interface Feature {
 
 const features: Feature[] = [
   {
-    title: "AI-Powered Automation",
-    description: "Transform your workflow with intelligent automation that learns and adapts to your needs. Our AI engine handles complex tasks with precision.",
+    title: "AI-Powered Outreach",
+    description:
+      "Enhance your NGO's impact with intelligent automation that streamlines donor engagement, volunteer coordination, and resource management.",
     image: "/features/image1.png",
     gradient: "from-indigo-500 via-purple-500 to-pink-500",
   },
   {
-    title: "Smart Integrations",
-    description: "Seamlessly connect with your favorite tools and platforms. Our platform works harmoniously with your existing tech stack.",
+    title: "Seamless Integrations",
+    description:
+      "Connect effortlessly with fundraising platforms, social media, and communication tools to expand your reach and efficiency.",
     image: "/features/image2.png",
     gradient: "from-cyan-500 via-teal-500 to-emerald-500",
   },
   {
-    title: "Advanced Analytics",
-    description: "Gain deep insights into your automation performance with real-time analytics and detailed reporting dashboards.",
+    title: "Impact Analytics",
+    description:
+      "Track donations, volunteer efforts, and project success with real-time analytics, helping you make data-driven decisions for greater social impact.",
     image: "/features/image3.png",
     gradient: "from-amber-500 via-orange-500 to-red-500",
   },
   {
-    title: "Enterprise Security",
-    description: "Rest easy with enterprise-grade security. Your data is protected with state-of-the-art encryption and compliance measures.",
+    title: "Secure & Compliant",
+    description:
+      "Keep donor and beneficiary data safe with enterprise-grade security, ensuring trust and compliance with global standards.",
     image: "/features/image4.png",
     gradient: "from-fuchsia-500 via-rose-500 to-orange-500",
   },
 ];
 
-const FeatureCard = ({ feature, index }: { feature: Feature; index: number }) => {
+const FeatureCard = ({
+  feature,
+  index,
+}: {
+  feature: Feature;
+  index: number;
+}) => {
   const ref = React.useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -49,11 +59,7 @@ const FeatureCard = ({ feature, index }: { feature: Feature; index: number }) =>
   const y = useTransform(scrollYProgress, [0, 1], [100, 0]);
 
   return (
-    <motion.div
-      ref={ref}
-      style={{ opacity, y }}
-      className="relative group"
-    >
+    <motion.div ref={ref} style={{ opacity, y }} className="relative group">
       <div
         className={cn(
           "flex flex-col gap-8 md:gap-12",
@@ -68,17 +74,21 @@ const FeatureCard = ({ feature, index }: { feature: Feature; index: number }) =>
             className="relative"
           >
             <div className="relative z-10">
-              <h3 className={cn(
-                "text-3xl md:text-4xl font-bold",
-                "relative inline-block"
-              )}>
+              <h3
+                className={cn(
+                  "text-3xl md:text-4xl font-bold",
+                  "relative inline-block"
+                )}
+              >
                 <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r dark:from-white dark:to-gray-200 from-black to-gray-800">
                   {feature.title}
                 </span>
-                <span className={cn(
-                  "absolute -z-10 inset-0 opacity-10 blur-xl bg-gradient-to-r",
-                  feature.gradient
-                )} />
+                <span
+                  className={cn(
+                    "absolute -z-10 inset-0 opacity-10 blur-xl bg-gradient-to-r",
+                    feature.gradient
+                  )}
+                />
               </h3>
               <p className="mt-4 text-lg leading-relaxed text-neutral-600 dark:text-neutral-300">
                 {feature.description}
@@ -93,10 +103,12 @@ const FeatureCard = ({ feature, index }: { feature: Feature; index: number }) =>
             transition={{ duration: 0.3 }}
             className="relative h-[300px] md:h-[400px] w-full rounded-xl overflow-hidden"
           >
-            <div className={cn(
-              "absolute inset-0 bg-gradient-to-r opacity-80 mix-blend-multiply",
-              feature.gradient
-            )} />
+            <div
+              className={cn(
+                "absolute inset-0 bg-gradient-to-r opacity-80 mix-blend-multiply",
+                feature.gradient
+              )}
+            />
             <Image
               src={feature.image}
               alt={feature.title}
@@ -134,14 +146,14 @@ export const Features = () => {
           className="text-center space-y-4 mb-20 md:mb-28"
         >
           <h2 className="text-4xl md:text-5xl font-bold">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-600 dark:from-white dark:via-gray-200 dark:to-gray-400">
-              Powerful Features
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-green-700 via-green-500 to-green-300 dark:from-white dark:via-gray-200 dark:to-gray-400">
+              Empowering Change
             </span>
           </h2>
           <div className="text-lg md:text-xl text-neutral-600 dark:text-neutral-300">
             Discover how our
-            <Cover>intelligent automation</Cover>
-            can transform your workflow
+            <Cover>innovative solutions</Cover>
+            can amplify your NGO's impact.
           </div>
         </motion.div>
 

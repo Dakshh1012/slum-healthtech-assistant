@@ -12,10 +12,10 @@ export const Footer = () => {
           {/* Logo and Description */}
           <div className="col-span-1 md:col-span-2">
             <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-400">
-              AutomateAI
+              NGO
             </h3>
             <p className="mt-4 text-gray-600 max-w-sm">
-              Empowering your workflow with intelligent automation solutions. Transform the way you work with AI-powered tools.
+              Best NGO Website
             </p>
             <div className="flex gap-4 mt-6">
               <Link 

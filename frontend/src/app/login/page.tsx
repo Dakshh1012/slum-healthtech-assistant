@@ -96,7 +96,7 @@ const Login = () => {
         <div>
           <div className="flex items-center gap-2 mb-12">
             <div className="w-8 h-8 bg-brand-blue rounded-lg"></div>
-            <span className="text-xl font-semibold">dotwork</span>
+            <span className="text-xl font-semibold">Alphawork</span>
           </div>
 
           <div className="max-w-md">

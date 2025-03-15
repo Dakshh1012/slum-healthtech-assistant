@@ -59,14 +59,14 @@ const NavItems: NavItem[] = [
     title: "Resources",
     dropdownItems: [],
   },
-  {
-    title: "Pricing",
-    dropdownItems: [],
-  },
-  {
-    title: "For Developers",
-    dropdownItems: [],
-  },
+  // {
+  //   title: "Pricing",
+  //   dropdownItems: [],
+  // },
+  // {
+  //   title: "For Developers",
+  //   dropdownItems: [],
+  // },
 ]
 
 export default function Navbar() {

@@ -17,15 +17,12 @@ const Hero = () => {
         
         {/* Headline */}
         <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600">
-          Deploy your website
-          <br />
-          in seconds, not hours.
+          NGO WEBSITE
         </h1>
 
         {/* Subheading */}
         <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-10">
-          With our state of the art, cutting edge, we are so back kinda
-          hosting services, you can deploy your website in seconds.
+        With our state-of-the-art, cutting-edge, mission-driven hosting services, your NGO can launch its website in seconds—amplifying your impact effortlessly.
         </p>
 
         {/* CTA Buttons */}
@@ -35,12 +32,12 @@ const Hero = () => {
           >
             Create account
           </Button>
-          <Button 
+          {/* <Button 
             variant="outline"
             className="bg-white/80 backdrop-blur-sm text-black border-2 border-gray-200 hover:bg-gray-50 px-8 py-6 text-lg"
           >
             Book a call
-          </Button>
+          </Button> */}
         </div>
 
         {/* Video Dialog Section */}
