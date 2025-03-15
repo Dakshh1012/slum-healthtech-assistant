@@ -252,6 +252,7 @@ export default function HomeScreen() {
         <View style={styles.headerIcons}>
           <Search size={24} color={THEME.text.primary} style={styles.icon} />
           <Bell size={24} color={THEME.text.primary} />
+          <ProfileAvatar />
         </View>
       </View>
       <ScrollView>
