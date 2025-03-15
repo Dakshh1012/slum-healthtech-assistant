@@ -1,7 +1,7 @@
-import { View, Text, Image, Pressable, Animated, Dimensions } from "react-native";
+import { View, Text, Image, Pressable, Animated, Dimensions, TouchableOpacity } from "react-native";
 import { useState, useRef } from "react";
 import { StatusBar } from "expo-status-bar";
-
+import { Link } from "expo-router";
 const { width } = Dimensions.get('window');
 
 const onboardingData = [
@@ -77,14 +77,14 @@ export default function Index() {
   return (
     <View className="flex-1 bg-green-500">
       <StatusBar style="light" />
-      
+
       {/* Gradient Background */}
       <View className="absolute inset-0 bg-[#07A996]" />
 
       {/* Content Container */}
       <View className="flex-1 px-6">
         {/* Image Container */}
-        <Animated.View 
+        <Animated.View
           className="items-center justify-center flex-1 pt-16"
           style={{
             opacity: fadeAnim,
@@ -101,7 +101,7 @@ export default function Index() {
         </Animated.View>
 
         {/* Text Content */}
-        <Animated.View 
+        <Animated.View
           className="items-center mb-8"
           style={{
             opacity: fadeAnim,
@@ -127,11 +127,10 @@ export default function Index() {
               className="p-2"
             >
               <Animated.View
-                className={`h-2.5 rounded-full ${
-                  currentIndex === index 
-                    ? "bg-white w-5" 
+                className={`h-2.5 rounded-full ${currentIndex === index
+                    ? "bg-white w-5"
                     : "bg-white/40 w-2.5"
-                }`}
+                  }`}
                 style={{
                   transform: [
                     { scale: currentIndex === index ? 1.1 : 1 }
@@ -143,7 +142,7 @@ export default function Index() {
         </View>
 
         {/* Bottom Button */}
-        <Animated.View 
+        <Animated.View
           className="mb-12"
           style={{
             opacity: fadeAnim,
@@ -162,6 +161,8 @@ export default function Index() {
               </Text>
             </Pressable>
           ) : (
+
+          <View>
             <Pressable
               onPress={handleGoogleSignIn}
               className="bg-white h-14 rounded-full flex-row items-center justify-center space-x-2 shadow-lg gap-4"
@@ -174,6 +175,11 @@ export default function Index() {
                 Sign in with Google
               </Text>
             </Pressable>
+            <TouchableOpacity>
+              <Link href="./(tabs)">Go to MediBuddy</Link>
+            </TouchableOpacity>
+          </View>
+
           )}
         </Animated.View>
       </View>
