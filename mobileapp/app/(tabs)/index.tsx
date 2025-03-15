@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Bell, TriangleAlert as AlertTriangle, Shield, Wind } from 'lucide-react-native';
+import LanguagePicker from '@/components/LanguagePicker';
+import TranslatedText from '@/components/TranslatedText';
 
 const THEME = {
   primary: '#00BFA6',
@@ -39,11 +41,13 @@ const getStatusColor = (status: 'good' | 'moderate' | 'poor') => {
 
 const AirQualityParameter: React.FC<AirQualityParameterProps> = ({ title, value, unit, status }) => (
   <View style={[styles.parameterCard, { borderLeftColor: getStatusColor(status), borderLeftWidth: 4 }]}>
-    <Text style={styles.parameterTitle}>{title}</Text>
-    <Text style={styles.parameterValue}>{value}</Text>
-    <Text style={styles.parameterUnit}>{unit}</Text>
+    <TranslatedText textKey={title} style={styles.parameterTitle}/>
+    <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+      <TranslatedText textKey={value} style={styles.parameterValue}/>
+      <TranslatedText textKey={unit} style={styles.parameterUnit}/>
+    </View>
     <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(status) }]}>
-      <Text style={styles.statusText}>{status.toUpperCase()}</Text>
+      <TranslatedText textKey={status.toUpperCase()} style={styles.statusText}/>
     </View>
   </View>
 );
@@ -52,8 +56,8 @@ const HealthAdvisory = ({ level, message }: { level: string; message: string }) 
   <View style={styles.advisoryCard}>
     <AlertTriangle size={24} color={THEME.warning} />
     <View style={styles.advisoryContent}>
-      <Text style={styles.advisoryLevel}>{level}</Text>
-      <Text style={styles.advisoryMessage}>{message}</Text>
+      <TranslatedText textKey={level} style={styles.advisoryLevel}/>
+      <TranslatedText textKey={message} style={styles.advisoryMessage}/>
     </View>
   </View>
 );
@@ -62,8 +66,8 @@ const PreventiveMeasure = ({ title, description }: { title: string; description:
   <View style={styles.measureCard}>
     <Shield size={20} color={THEME.primary} />
     <View style={styles.measureContent}>
-      <Text style={styles.measureTitle}>{title}</Text>
-      <Text style={styles.measureDescription}>{description}</Text>
+      <TranslatedText textKey={title} style={styles.measureTitle}/>
+      <TranslatedText textKey={description} style={styles.measureDescription}/>
     </View>
   </View>
 );
@@ -84,6 +88,7 @@ export default function HomeScreen() {
         </View>
         <View style={styles.headerIcons}>
           <Search size={24} color={THEME.text.primary} style={styles.icon} />
+          <LanguagePicker />
           <Bell size={24} color={THEME.text.primary} />
         </View>
       </View>

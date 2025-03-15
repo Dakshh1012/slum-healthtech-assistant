@@ -1,14 +1,18 @@
-import { Stack } from "expo-router";
+import React from 'react';
+import { Stack } from 'expo-router';
+import { TranslationProvider } from '@/context/TranslationContext';
 import './globals.css'
 
 export default function RootLayout() {
   return (
-    <Stack 
-      screenOptions={{
-        headerShown: false,
-        animation: 'slide_from_right',
-        contentStyle: { backgroundColor: 'white' }
-      }}
-    />
+    <TranslationProvider>
+      <Stack 
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: 'white' }
+        }}
+      />
+    </TranslationProvider>
   );
 }
