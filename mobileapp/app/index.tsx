@@ -1,7 +1,8 @@
 import { View, Text, Image, Pressable, Animated, Dimensions, TouchableOpacity } from "react-native";
 import { useState, useRef } from "react";
 import { StatusBar } from "expo-status-bar";
-import { Link } from "expo-router";
+import Auth from '../components/Auth'
+
 const { width } = Dimensions.get('window');
 
 const onboardingData = [
@@ -70,10 +71,6 @@ export default function Index() {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    console.log("Google Sign In");
-  };
-
   return (
     <View className="flex-1 bg-green-500">
       <StatusBar style="light" />
@@ -95,7 +92,7 @@ export default function Index() {
         >
           <Image
             source={onboardingData[currentIndex].image}
-            className="w-100 h-100"
+            className="w-90 h-90"
             resizeMode="contain"
           />
         </Animated.View>
@@ -141,8 +138,8 @@ export default function Index() {
           ))}
         </View>
 
-        {/* Bottom Button */}
-        <Animated.View
+        {/* Bottom Section */}
+        <Animated.View 
           className="mb-12"
           style={{
             opacity: fadeAnim,
@@ -161,25 +158,7 @@ export default function Index() {
               </Text>
             </Pressable>
           ) : (
-
-          <View>
-            <Pressable
-              onPress={handleGoogleSignIn}
-              className="bg-white h-14 rounded-full flex-row items-center justify-center space-x-2 shadow-lg gap-4"
-            >
-              <Image
-                source={require("../assets/google.png")}
-                className="w-5 h-5"
-              />
-              <Text className="text-gray-700 font-semibold text-lg">
-                Sign in with Google
-              </Text>
-            </Pressable>
-            <TouchableOpacity>
-              <Link href="./(tabs)">Go to MediBuddy</Link>
-            </TouchableOpacity>
-          </View>
-
+            <Auth />
           )}
         </Animated.View>
       </View>
