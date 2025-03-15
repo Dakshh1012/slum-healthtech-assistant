@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -17,6 +16,7 @@ import { supabase } from '../../lib/supabase';
 import { NGO, Request, RequestMedia } from '../../lib/types';
 import { MessageCircle, Paperclip, Camera, ChevronDown, X } from 'lucide-react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
+import TranslatedText from '../../components/TranslatedText';
 
 const THEME = {
   primary: '#00BFA6',
@@ -70,10 +70,12 @@ const StatusBadge = ({ status }: { status: string }) => {
 
   return (
     <View style={[styles.statusBadge, { backgroundColor: config.backgroundColor, borderColor: config.borderColor }]}>
-      <Text style={[styles.statusIcon]}>{config.icon}</Text>
-      <Text style={[styles.statusText, { color: config.color }]}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Text>
+      <TranslatedText style={[styles.statusIcon]} textKey={`status.icon.${status.toLowerCase()}`} fallback={config.icon} />
+      <TranslatedText 
+        style={[styles.statusText, { color: config.color }]} 
+        textKey={`status.${status.toLowerCase()}`}
+        fallback={status.charAt(0).toUpperCase() + status.slice(1)}
+      />
     </View>
   );
 };
@@ -143,15 +145,15 @@ const SeverityButton = ({
     ]}
     onPress={onPress}
   >
-    <Text
+    <TranslatedText
       style={[
         styles.severityButtonText,
         selected && styles.selectedSeverityButtonText,
         !selected && { color },
       ]}
-    >
-      {level.charAt(0).toUpperCase() + level.slice(1)}
-    </Text>
+      textKey={`severity.${level}`}
+      fallback={level.charAt(0).toUpperCase() + level.slice(1)}
+    />
   </TouchableOpacity>
 );
 
@@ -374,11 +376,11 @@ export default function ComplaintsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
         {/* Headline */}
-        <Text style={styles.headline}>Let your voice be heard!</Text>
+        <TranslatedText style={styles.headline} textKey="complaints.headline" fallback="Let your voice be heard!" />
 
         {/* NGO Selection */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Select NGO:</Text>
+          <TranslatedText style={styles.label} textKey="complaints.selectNgo" fallback="Select NGO:" />
           <NGODropdownPicker
             selectedNgo={selectedNgo}
             ngos={ngos}
@@ -408,7 +410,7 @@ export default function ComplaintsScreen() {
 
         {/* Severity Buttons */}
         <View style={styles.severityContainer}>
-          <Text style={styles.dropdownLabel}>Severity:</Text>
+          <TranslatedText style={styles.dropdownLabel} textKey="complaints.severity" fallback="Severity:" />
           <View style={styles.severityButtonsContainer}>
             <SeverityButton
               level="low"
@@ -433,7 +435,7 @@ export default function ComplaintsScreen() {
 
         {/* Image Upload Section */}
         <View style={styles.imageUploadContainer}>
-          <Text style={styles.imageUploadLabel}>Add Images (Max 5):</Text>
+          <TranslatedText style={styles.imageUploadLabel} textKey="complaints.addImages" fallback="Add Images (Max 5):" />
           <View style={styles.imagePreviewContainer}>
             {images.map((uri, index) => (
               <View key={index} style={styles.imagePreviewWrapper}>
@@ -442,7 +444,7 @@ export default function ComplaintsScreen() {
                   style={styles.removeImageButton}
                   onPress={() => removeImage(index)}
                 >
-                  <Text style={styles.removeImageText}>X</Text>
+                  <TranslatedText style={styles.removeImageText} textKey="complaints.remove" fallback="X" />
                 </TouchableOpacity>
               </View>
             ))}
@@ -466,36 +468,38 @@ export default function ComplaintsScreen() {
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitButtonText}>Submit Complaint</Text>
+            <TranslatedText style={styles.submitButtonText} textKey="complaints.submit" fallback="Submit Complaint" />
           )}
         </TouchableOpacity>
 
         {/* Past Requests Section */}
         {pastRequests.length > 0 && (
           <View style={styles.pastRequestsContainer}>
-            <Text style={styles.pastRequestsTitle}>Your Past Requests</Text>
+            <TranslatedText style={styles.pastRequestsTitle} textKey="complaints.pastRequests" fallback="Your Past Requests" />
             {pastRequests.map((request) => (
               <View key={request.id} style={styles.requestCard}>
                 <View style={styles.requestHeader}>
-                  <Text style={styles.requestDate}>
-                    {new Date(request.created_at).toLocaleDateString()}
-                  </Text>
+                  <TranslatedText style={styles.requestDate} textKey="complaints.date" fallback={new Date(request.created_at).toLocaleDateString()} />
                   <StatusBadge status={request.status} />
                 </View>
-                <Text style={styles.requestText}>{request.message}</Text>
-                <Text style={styles.requestText}>
-                  Address: {request.address}
-                </Text>
-                <Text style={styles.requestSeverity}>
-                  Severity:{" "}
-                  {request.severity.charAt(0).toUpperCase() +
-                    request.severity.slice(1)}
-                </Text>
+                <TranslatedText style={styles.requestText} textKey={`request.${request.id}.message`} fallback={request.message} />
+                <TranslatedText 
+                  style={styles.requestText} 
+                  textKey="complaints.address" 
+                  fallback={`Address: ${request.address}`} 
+                />
+                <TranslatedText 
+                  style={styles.requestSeverity} 
+                  textKey={`complaints.severityLabel`}
+                  fallback={`Severity: ${request.severity.charAt(0).toUpperCase() + request.severity.slice(1)}`} 
+                />
                 {request.media && request.media.length > 0 && (
                   <View style={styles.requestImagesContainer}>
-                    <Text style={styles.requestImagesLabel}>
-                      Attached Images:
-                    </Text>
+                    <TranslatedText 
+                      style={styles.requestImagesLabel} 
+                      textKey="complaints.attachedImages" 
+                      fallback="Attached Images:" 
+                    />
                     <View style={styles.requestImagesPreview}>
                       {request.media.map((media, index) => (
                         <Image

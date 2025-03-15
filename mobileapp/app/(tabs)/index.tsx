@@ -418,7 +418,6 @@ const ProfileAvatar = () => {
   return (
     <TouchableOpacity 
       onPress={() => router.push('./profile/rahul')}
-      onPress={() => router.push('./profile/rahul')}
       style={styles.avatarContainer}
     >
       <Image 
@@ -513,8 +512,8 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Hello, Rahul</Text>
-          <Text style={styles.date}>{currentDate}</Text>
+          <TranslatedText textKey='Hello, Rahul' style={styles.greeting}/>
+          <TranslatedText textKey={currentDate} style={styles.date}/>
         </View>
         <View style={styles.headerIcons}>
           <LanguagePicker />
@@ -530,7 +529,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.aqiContent}>
             {aqiData ? (
-              <Text style={styles.aqiValue}>{aqiData.aqi + "/ 5" || "N/A"}</Text>
+              <TranslatedText textKey={aqiData.aqi + "/ 5" || "N/A"} style={styles.aqiValue}/>
             ) : (
               <ActivityIndicator size="small" color={THEME.primary} />
             )}

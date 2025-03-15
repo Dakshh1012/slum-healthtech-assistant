@@ -1,7 +1,8 @@
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Image, FlatList, Pressable } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Modal, TextInput, Image, FlatList, Pressable } from 'react-native';
 import { useState, useEffect } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { ArrowUp, ArrowDown, Award, Share2, MessageSquare, Bookmark, MoveHorizontal as MoreHorizontal, TrendingUp, Clock, Star } from 'lucide-react-native';
+import TranslatedText from '@/components/TranslatedText';
 
 // Define post type for TypeScript
 type Post = {
@@ -146,7 +147,7 @@ export default function CommunityScreen() {
     return votes.toString();
   };
 
-  const sortPosts = (posts: Post[]): Post[] => {
+  const sortPosts: (posts: Post[]) => Post[] = (posts: Post[]): Post[] => {
     switch (sortBy) {
       case 'hot':
         return [...posts].sort((a, b) => (b.votes + b.comments.length) - (a.votes + a.comments.length));
@@ -162,12 +163,12 @@ export default function CommunityScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Community</Text>
+        <TranslatedText textKey="Community" style={styles.title}/>
         <TouchableOpacity 
           style={styles.postButton}
           onPress={() => setPostModalVisible(true)}
         >
-          <Text style={styles.postButtonText}>Create Post</Text>
+          <TranslatedText textKey='Create Post' style={styles.postButtonText}/>
         </TouchableOpacity>
       </View>
 
@@ -177,21 +178,21 @@ export default function CommunityScreen() {
           onPress={() => setSortBy('hot')}
         >
           <TrendingUp size={16} color={sortBy === 'hot' ? '#008080' : '#666'} />
-          <Text style={[styles.sortButtonText, sortBy === 'hot' && styles.sortButtonTextActive]}>Hot</Text>
+          <TranslatedText textKey='Hot' style={[styles.sortButtonText, sortBy === 'hot' && styles.sortButtonTextActive]}/>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.sortButton, sortBy === 'new' && styles.sortButtonActive]}
           onPress={() => setSortBy('new')}
         >
           <Clock size={16} color={sortBy === 'new' ? '#008080' : '#666'} />
-          <Text style={[styles.sortButtonText, sortBy === 'new' && styles.sortButtonTextActive]}>New</Text>
+          <TranslatedText textKey='New' style={[styles.sortButtonText, sortBy === 'new' && styles.sortButtonTextActive]}/>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.sortButton, sortBy === 'top' && styles.sortButtonActive]}
           onPress={() => setSortBy('top')}
         >
           <Star size={16} color={sortBy === 'top' ? '#008080' : '#666'} />
-          <Text style={[styles.sortButtonText, sortBy === 'top' && styles.sortButtonTextActive]}>Top</Text>
+          <TranslatedText textKey='Top' style={[styles.sortButtonText, sortBy === 'top' && styles.sortButtonTextActive]}/>
         </TouchableOpacity>
       </View>
       
@@ -205,7 +206,7 @@ export default function CommunityScreen() {
               <TouchableOpacity onPress={() => handleVote(item.id, 1)}>
                 <ArrowUp size={20} color="#666" />
               </TouchableOpacity>
-              <Text style={styles.voteCount}>{formatVotes(item.votes)}</Text>
+              <TranslatedText textKey={formatVotes(item.votes)} style={styles.voteCount}/>
               <TouchableOpacity onPress={() => handleVote(item.id, -1)}>
                 <ArrowDown size={20} color="#666" />
               </TouchableOpacity>
@@ -218,19 +219,19 @@ export default function CommunityScreen() {
                   setModalVisible(true);
                 }}
               >
-                <Text style={styles.postTitle}>{item.title}</Text>
+                <TranslatedText textKey={item.title} style={styles.postTitle}/>
                 {item.imageUri && (
                   <Image source={{ uri: item.imageUri }} style={styles.postImage} />
                 )}
-                <Text style={styles.postText} numberOfLines={3}>{item.content}</Text>
+                <TranslatedText textKey={item.content} style={styles.postText} numberOfLines={3}/>
                 
                 <View style={styles.postFooter}>
                   <View style={styles.postMeta}>
-                    <Text style={styles.postTime}>{formatDate(item.timestamp)}</Text>
+                    <TranslatedText textKey={formatDate(item.timestamp)} style={styles.postTime}/>
                     <View style={styles.postActions}>
                       <TouchableOpacity style={styles.actionButton}>
                         <MessageSquare size={16} color="#666" />
-                        <Text style={styles.actionText}>{item.comments.length}</Text>
+                        <TranslatedText textKey={item.comments.length.toString()} style={styles.actionText}/>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.actionButton}>
                         <Share2 size={16} color="#666" />
@@ -257,7 +258,7 @@ export default function CommunityScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No posts yet. Be the first to share!</Text>
+            <TranslatedText textKey="No posts yet. Be the first to share!" style={styles.emptyText} />
           </View>
         }
       />
@@ -271,7 +272,7 @@ export default function CommunityScreen() {
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Create a Post</Text>
+            <TranslatedText textKey="Create a Post" style={styles.modalTitle} />
             
             <TextInput
               style={styles.input}
@@ -294,9 +295,7 @@ export default function CommunityScreen() {
                 <Image source={{ uri: newPostImage }} style={styles.previewImage} />
               ) : null}
               <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
-                <Text style={styles.imageButtonText}>
-                  {newPostImage ? "Change Image" : "Add Image"}
-                </Text>
+                <TranslatedText textKey={newPostImage ? "Change Image" : "Add Image"} style={styles.imageButtonText} />
               </TouchableOpacity>
             </View>
             
@@ -310,13 +309,13 @@ export default function CommunityScreen() {
                   setNewPostImage(null);
                 }}
               >
-                <Text style={styles.buttonText}>Cancel</Text>
+                <TranslatedText textKey="Cancel" style={styles.buttonText} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.button, styles.submitButton]}
                 onPress={handleCreatePost}
               >
-                <Text style={styles.buttonText}>Post</Text>
+                <TranslatedText textKey="Post" style={styles.buttonText} />
               </TouchableOpacity>
             </View>
           </View>
@@ -335,12 +334,12 @@ export default function CommunityScreen() {
             {selectedPost && (
               <>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>{selectedPost.title}</Text>
+                  <TranslatedText textKey={selectedPost.title} style={styles.modalTitle} />
                   <TouchableOpacity
                     style={styles.closeButton}
                     onPress={() => setModalVisible(false)}
                   >
-                    <Text style={styles.closeButtonText}>×</Text>
+                    <TranslatedText textKey="×" style={styles.closeButtonText} />
                   </TouchableOpacity>
                 </View>
                 
@@ -348,11 +347,11 @@ export default function CommunityScreen() {
                   <Image source={{ uri: selectedPost.imageUri }} style={styles.detailImage} />
                 )}
                 
-                <Text style={styles.detailContent}>{selectedPost.content}</Text>
-                <Text style={styles.detailTime}>{formatDate(selectedPost.timestamp)}</Text>
+                <TranslatedText textKey={selectedPost.content} style={styles.detailContent} />
+                <TranslatedText textKey={formatDate(selectedPost.timestamp)} style={styles.detailTime} />
                 
                 <View style={styles.commentsSection}>
-                  <Text style={styles.commentsHeader}>Comments</Text>
+                  <TranslatedText textKey="Comments" style={styles.commentsHeader} />
                   
                   <FlatList
                     data={selectedPost.comments}
@@ -364,19 +363,19 @@ export default function CommunityScreen() {
                           <TouchableOpacity onPress={() => handleCommentVote(selectedPost.id, item.id, 1)}>
                             <ArrowUp size={16} color="#666" />
                           </TouchableOpacity>
-                          <Text style={styles.commentVoteCount}>{formatVotes(item.votes || 0)}</Text>
+                          <TranslatedText textKey={formatVotes(item.votes || 0)} style={styles.commentVoteCount} />
                           <TouchableOpacity onPress={() => handleCommentVote(selectedPost.id, item.id, -1)}>
                             <ArrowDown size={16} color="#666" />
                           </TouchableOpacity>
                         </View>
                         <View style={styles.commentContent}>
-                          <Text style={styles.commentText}>{item.content}</Text>
-                          <Text style={styles.commentTime}>{formatDate(item.timestamp)}</Text>
+                          <TranslatedText textKey={item.content} style={styles.commentText} />
+                          <TranslatedText textKey={formatDate(item.timestamp)} style={styles.commentTime} />
                         </View>
                       </View>
                     )}
                     ListEmptyComponent={
-                      <Text style={styles.noComments}>No comments yet. Be the first!</Text>
+                      <TranslatedText textKey="No comments yet. Be the first!" style={styles.noComments} />
                     }
                   />
                   
@@ -392,7 +391,7 @@ export default function CommunityScreen() {
                       style={styles.commentButton}
                       onPress={handleAddComment}
                     >
-                      <Text style={styles.commentButtonText}>Comment</Text>
+                      <TranslatedText textKey="Comment" style={styles.commentButtonText} />
                     </TouchableOpacity>
                   </View>
                 </View>
