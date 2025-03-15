@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Bell, TriangleAlert as AlertTriangle, Shield, Wind, Map as MapIcon } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
+import { useRouter } from 'expo-router';
 
 // Theme Configuration
 const THEME = {
@@ -408,6 +409,23 @@ const LocationMap = ({ location, nearbyLocations, errorMsg }: { location: Locati
     </View>
   );
 };
+// ProfileAvatar Component
+const ProfileAvatar = () => {
+  const router = useRouter();
+  
+  return (
+    <TouchableOpacity 
+      onPress={() => router.push('/profile/rahul')}
+      style={styles.avatarContainer}
+    >
+      <Image 
+        source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} 
+        style={styles.avatar} 
+      />
+    </TouchableOpacity>
+  );
+};
+
 // Main Home Screen Component
 export default function HomeScreen() {
   const [location, setLocation] = useState<LocationData | null>(null);
@@ -833,5 +851,17 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  avatarContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: THEME.primary,
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
   },
 });

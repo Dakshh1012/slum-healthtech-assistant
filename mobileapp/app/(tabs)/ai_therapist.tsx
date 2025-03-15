@@ -1,6 +1,7 @@
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Image, FlatList, Pressable } from 'react-native';
 import { useState, useEffect } from 'react';
 import * as ImagePicker from 'expo-image-picker';
+import { ArrowUp, ArrowDown, Award, Share2, MessageSquare, Bookmark, MoveHorizontal as MoreHorizontal, TrendingUp, Clock, Star } from 'lucide-react-native';
 
 // Define post type for TypeScript
 type Post = {
@@ -10,32 +11,37 @@ type Post = {
   imageUri?: string;
   timestamp: Date;
   comments: Comment[];
+  votes: number;
+  awards: Award[];
+  saved: boolean;
 };
 
 type Comment = {
   id: string;
   content: string;
   timestamp: Date;
+  votes: number;
 };
 
-export default function AITherapistScreen() {
-  // State for posts and selected post
+type Award = {
+  id: string;
+  name: string;
+  icon: string;
+};
+
+type SortOption = 'hot' | 'new' | 'top';
+
+export default function CommunityScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  
-  // State for modal visibility
   const [modalVisible, setModalVisible] = useState(false);
   const [postModalVisible, setPostModalVisible] = useState(false);
-  
-  // State for new post form
   const [newPostTitle, setNewPostTitle] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostImage, setNewPostImage] = useState<string | null>(null);
-  
-  // State for comments
   const [newComment, setNewComment] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('hot');
 
-  // Pick image from gallery
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -49,11 +55,8 @@ export default function AITherapistScreen() {
     }
   };
 
-  // Create a new post
   const handleCreatePost = () => {
-    if (newPostTitle.trim() === '' || newPostContent.trim() === '') {
-      return; // Don't create empty posts
-    }
+    if (newPostTitle.trim() === '' || newPostContent.trim() === '') return;
     
     const newPost: Post = {
       id: Date.now().toString(),
@@ -62,6 +65,9 @@ export default function AITherapistScreen() {
       imageUri: newPostImage || undefined,
       timestamp: new Date(),
       comments: [],
+      votes: 0,
+      awards: [],
+      saved: false,
     };
     
     setPosts([newPost, ...posts]);
@@ -71,7 +77,37 @@ export default function AITherapistScreen() {
     setPostModalVisible(false);
   };
 
-  // Add a comment to a post
+  const handleVote = (postId: string, value: number) => {
+    setPosts(posts.map(post => 
+      post.id === postId 
+        ? { ...post, votes: post.votes + value }
+        : post
+    ));
+  };
+
+  const handleSave = (postId: string) => {
+    setPosts(posts.map(post =>
+      post.id === postId
+        ? { ...post, saved: !post.saved }
+        : post
+    ));
+  };
+
+  const handleCommentVote = (postId: string, commentId: string, value: number) => {
+    setPosts(posts.map(post =>
+      post.id === postId
+        ? {
+            ...post,
+            comments: post.comments.map(comment =>
+              comment.id === commentId
+                ? { ...comment, votes: (comment.votes || 0) + value }
+                : comment
+            )
+          }
+        : post
+    ));
+  };
+
   const handleAddComment = () => {
     if (!selectedPost || newComment.trim() === '') return;
     
@@ -79,6 +115,7 @@ export default function AITherapistScreen() {
       id: Date.now().toString(),
       content: newComment,
       timestamp: new Date(),
+      votes: 0,
     };
     
     const updatedPost = {
@@ -91,14 +128,39 @@ export default function AITherapistScreen() {
     setNewComment('');
   };
 
-  // Format date for display
   const formatDate = (date: Date): string => {
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+
+    if (hours < 1) return 'just now';
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
+  };
+
+  const formatVotes = (votes: number): string => {
+    if (votes >= 1000) {
+      return `${(votes / 1000).toFixed(1)}k`;
+    }
+    return votes.toString();
+  };
+
+  const sortPosts = (posts: Post[]): Post[] => {
+    switch (sortBy) {
+      case 'hot':
+        return [...posts].sort((a, b) => (b.votes + b.comments.length) - (a.votes + a.comments.length));
+      case 'new':
+        return [...posts].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      case 'top':
+        return [...posts].sort((a, b) => b.votes - a.votes);
+      default:
+        return posts;
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header with Title and Post Button */}
       <View style={styles.header}>
         <Text style={styles.title}>Community</Text>
         <TouchableOpacity 
@@ -108,28 +170,90 @@ export default function AITherapistScreen() {
           <Text style={styles.postButtonText}>Create Post</Text>
         </TouchableOpacity>
       </View>
+
+      <View style={styles.sortBar}>
+        <TouchableOpacity
+          style={[styles.sortButton, sortBy === 'hot' && styles.sortButtonActive]}
+          onPress={() => setSortBy('hot')}
+        >
+          <TrendingUp size={16} color={sortBy === 'hot' ? '#008080' : '#666'} />
+          <Text style={[styles.sortButtonText, sortBy === 'hot' && styles.sortButtonTextActive]}>Hot</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.sortButton, sortBy === 'new' && styles.sortButtonActive]}
+          onPress={() => setSortBy('new')}
+        >
+          <Clock size={16} color={sortBy === 'new' ? '#008080' : '#666'} />
+          <Text style={[styles.sortButtonText, sortBy === 'new' && styles.sortButtonTextActive]}>New</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.sortButton, sortBy === 'top' && styles.sortButtonActive]}
+          onPress={() => setSortBy('top')}
+        >
+          <Star size={16} color={sortBy === 'top' ? '#008080' : '#666'} />
+          <Text style={[styles.sortButtonText, sortBy === 'top' && styles.sortButtonTextActive]}>Top</Text>
+        </TouchableOpacity>
+      </View>
       
-      {/* Posts List */}
       <FlatList
-        data={posts}
+        data={sortPosts(posts)}
         keyExtractor={(item) => item.id}
         style={styles.postsList}
         renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={styles.postCard}
-            onPress={() => {
-              setSelectedPost(item);
-              setModalVisible(true);
-            }}
-          >
-            {item.imageUri && (
-              <Image source={{ uri: item.imageUri }} style={styles.postImage} />
-            )}
-            <Text style={styles.postTitle}>{item.title}</Text>
-            <Text style={styles.postContent} numberOfLines={2}>{item.content}</Text>
-            <Text style={styles.postTime}>{formatDate(item.timestamp)}</Text>
-            <Text style={styles.commentsCount}>{item.comments.length} comments</Text>
-          </TouchableOpacity>
+          <View style={styles.postCard}>
+            <View style={styles.voteContainer}>
+              <TouchableOpacity onPress={() => handleVote(item.id, 1)}>
+                <ArrowUp size={20} color="#666" />
+              </TouchableOpacity>
+              <Text style={styles.voteCount}>{formatVotes(item.votes)}</Text>
+              <TouchableOpacity onPress={() => handleVote(item.id, -1)}>
+                <ArrowDown size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.postContent}>
+              <TouchableOpacity 
+                onPress={() => {
+                  setSelectedPost(item);
+                  setModalVisible(true);
+                }}
+              >
+                <Text style={styles.postTitle}>{item.title}</Text>
+                {item.imageUri && (
+                  <Image source={{ uri: item.imageUri }} style={styles.postImage} />
+                )}
+                <Text style={styles.postText} numberOfLines={3}>{item.content}</Text>
+                
+                <View style={styles.postFooter}>
+                  <View style={styles.postMeta}>
+                    <Text style={styles.postTime}>{formatDate(item.timestamp)}</Text>
+                    <View style={styles.postActions}>
+                      <TouchableOpacity style={styles.actionButton}>
+                        <MessageSquare size={16} color="#666" />
+                        <Text style={styles.actionText}>{item.comments.length}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.actionButton}>
+                        <Share2 size={16} color="#666" />
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.actionButton}
+                        onPress={() => handleSave(item.id)}
+                      >
+                        <Bookmark 
+                          size={16} 
+                          color={item.saved ? '#008080' : '#666'}
+                          fill={item.saved ? '#008080' : 'none'}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.actionButton}>
+                        <MoreHorizontal size={16} color="#666" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -147,7 +271,7 @@ export default function AITherapistScreen() {
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Create a New Post</Text>
+            <Text style={styles.modalTitle}>Create a Post</Text>
             
             <TextInput
               style={styles.input}
@@ -158,7 +282,7 @@ export default function AITherapistScreen() {
             
             <TextInput
               style={[styles.input, styles.multilineInput]}
-              placeholder="Share your thoughts..."
+              placeholder="What are your thoughts?"
               value={newPostContent}
               onChangeText={setNewPostContent}
               multiline
@@ -210,7 +334,15 @@ export default function AITherapistScreen() {
           <View style={styles.modalView}>
             {selectedPost && (
               <>
-                <Text style={styles.modalTitle}>{selectedPost.title}</Text>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{selectedPost.title}</Text>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <Text style={styles.closeButtonText}>×</Text>
+                  </TouchableOpacity>
+                </View>
                 
                 {selectedPost.imageUri && (
                   <Image source={{ uri: selectedPost.imageUri }} style={styles.detailImage} />
@@ -228,8 +360,19 @@ export default function AITherapistScreen() {
                     style={styles.commentsList}
                     renderItem={({ item }) => (
                       <View style={styles.commentItem}>
-                        <Text style={styles.commentContent}>{item.content}</Text>
-                        <Text style={styles.commentTime}>{formatDate(item.timestamp)}</Text>
+                        <View style={styles.commentVoteContainer}>
+                          <TouchableOpacity onPress={() => handleCommentVote(selectedPost.id, item.id, 1)}>
+                            <ArrowUp size={16} color="#666" />
+                          </TouchableOpacity>
+                          <Text style={styles.commentVoteCount}>{formatVotes(item.votes || 0)}</Text>
+                          <TouchableOpacity onPress={() => handleCommentVote(selectedPost.id, item.id, -1)}>
+                            <ArrowDown size={16} color="#666" />
+                          </TouchableOpacity>
+                        </View>
+                        <View style={styles.commentContent}>
+                          <Text style={styles.commentText}>{item.content}</Text>
+                          <Text style={styles.commentTime}>{formatDate(item.timestamp)}</Text>
+                        </View>
                       </View>
                     )}
                     ListEmptyComponent={
@@ -243,22 +386,16 @@ export default function AITherapistScreen() {
                       placeholder="Add a comment..."
                       value={newComment}
                       onChangeText={setNewComment}
+                      multiline
                     />
                     <TouchableOpacity 
                       style={styles.commentButton}
                       onPress={handleAddComment}
                     >
-                      <Text style={styles.commentButtonText}>Send</Text>
+                      <Text style={styles.commentButtonText}>Comment</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
-                
-                <TouchableOpacity
-                  style={[styles.button, styles.closeButton]}
-                  onPress={() => setModalVisible(false)}
-                >
-                  <Text style={styles.buttonText}>Close</Text>
-                </TouchableOpacity>
               </>
             )}
           </View>
@@ -271,232 +408,307 @@ export default function AITherapistScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 10,
-    marginTop: 40,
-    marginBottom: 10,
+    padding: 15,
+    paddingTop: 50,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e6e6e6',
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
+    color: '#008080',
   },
-  subtitle: {
-    fontSize: 16,
+  sortBar: {
+    flexDirection: 'row',
+    padding: 10,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e6e6e6',
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 10,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+  },
+  sortButtonActive: {
+    backgroundColor: '#e6f3f3',
+  },
+  sortButtonText: {
+    marginLeft: 4,
     color: '#666',
+    fontSize: 14,
+  },
+  sortButtonTextActive: {
+    color: '#008080',
   },
   postButton: {
-    backgroundColor: '#4a90e2',
-    padding: 10,
-    borderRadius: 5,
+    backgroundColor: '#008080',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   postButtonText: {
     color: 'white',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   postsList: {
     flex: 1,
   },
   postCard: {
+    flexDirection: 'row',
     backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
-    marginVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    marginVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e6e6e6',
+  },
+  voteContainer: {
+    padding: 8,
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  voteCount: {
+    marginVertical: 4,
+    fontWeight: '600',
+    color: '#1a1a1b',
+  },
+  postContent: {
+    flex: 1,
+    padding: 12,
+  },
+  postTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#1a1a1b',
   },
   postImage: {
     width: '100%',
     height: 200,
-    borderRadius: 8,
-    marginBottom: 10,
+    borderRadius: 4,
+    marginBottom: 8,
   },
-  postTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  postContent: {
+  postText: {
     fontSize: 14,
-    color: '#333',
-    marginBottom: 10,
+    color: '#1a1a1b',
+    marginBottom: 8,
+  },
+  postFooter: {
+    marginTop: 8,
+  },
+  postMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   postTime: {
     fontSize: 12,
-    color: '#888',
-    marginBottom: 5,
+    color: '#787c7e',
   },
-  commentsCount: {
+  postActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 16,
+    padding: 4,
+  },
+  actionText: {
+    marginLeft: 4,
     fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
+    color: '#787c7e',
   },
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     padding: 20,
+    alignItems: 'center',
   },
   emptyText: {
-    color: '#888',
-    fontSize: 16,
-    textAlign: 'center',
+    color: '#787c7e',
+    fontSize: 14,
   },
   centeredView: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalView: {
-    width: '90%',
-    maxHeight: '80%',
+    flex: 1,
     backgroundColor: 'white',
-    borderRadius: 10,
+    marginTop: 40,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
   },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 15,
-    textAlign: 'center',
+    color: '#1a1a1b',
   },
-  detailImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    marginBottom: 15,
+  closeButton: {
+    padding: 8,
   },
-  detailContent: {
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  detailTime: {
-    fontSize: 12,
-    color: '#888',
-    marginBottom: 15,
+  closeButtonText: {
+    fontSize: 24,
+    color: '#787c7e',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 10,
-    borderRadius: 5,
+    borderColor: '#e6e6e6',
+    borderRadius: 4,
+    padding: 12,
     marginBottom: 15,
-    width: '100%',
+    backgroundColor: '#f8f9fa',
   },
   multilineInput: {
-    height: 100,
+    height: 120,
     textAlignVertical: 'top',
   },
   imagePickerContainer: {
-    alignItems: 'center',
     marginBottom: 15,
-  },
-  imageButton: {
-    backgroundColor: '#4a90e2',
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 10,
-  },
-  imageButtonText: {
-    color: 'white',
   },
   previewImage: {
     width: '100%',
-    height: 150,
-    borderRadius: 5,
+    height: 200,
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  imageButton: {
+    backgroundColor: '#008080',
+    padding: 10,
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  imageButtonText: {
+    color: 'white',
+    fontWeight: '600',
   },
   modalButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
+    gap: 10,
   },
   button: {
-    borderRadius: 5,
-    padding: 10,
-    elevation: 2,
-    minWidth: 100,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 4,
+    minWidth: 80,
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#ccc',
+    backgroundColor: '#f8f9fa',
   },
   submitButton: {
-    backgroundColor: '#4a90e2',
-  },
-  closeButton: {
-    backgroundColor: '#ccc',
-    marginTop: 10,
-    alignSelf: 'center',
+    backgroundColor: '#008080',
   },
   buttonText: {
     color: 'white',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   commentsSection: {
-    marginTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    paddingTop: 15,
+    marginTop: 20,
   },
   commentsHeader: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     marginBottom: 10,
+    color: '#1a1a1b',
   },
   commentsList: {
-    maxHeight: 200,
+    maxHeight: '60%',
   },
   commentItem: {
+    flexDirection: 'row',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
+  },
+  commentVoteContainer: {
+    alignItems: 'center',
+    paddingRight: 8,
+  },
+  commentVoteCount: {
+    fontSize: 12,
+    color: '#1a1a1b',
+    marginVertical: 2,
   },
   commentContent: {
+    flex: 1,
+  },
+  commentText: {
     fontSize: 14,
+    color: '#1a1a1b',
   },
   commentTime: {
     fontSize: 12,
-    color: '#888',
-    marginTop: 2,
+    color: '#787c7e',
+    marginTop: 4,
   },
   noComments: {
-    color: '#888',
-    fontStyle: 'italic',
+    color: '#787c7e',
     textAlign: 'center',
-    padding: 10,
+    padding: 20,
   },
   addCommentContainer: {
-    flexDirection: 'row',
     marginTop: 15,
+    flexDirection: 'row',
+    gap: 10,
   },
   commentInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 8,
-    marginRight: 10,
+    borderColor: '#e6e6e6',
+    borderRadius: 4,
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    maxHeight: 100,
   },
   commentButton: {
-    backgroundColor: '#4a90e2',
-    padding: 8,
-    borderRadius: 5,
-    justifyContent: 'center',
+    backgroundColor: '#008080',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  detailContent: {
+    fontSize: 14,
+    color: '#1a1a1b',
+    marginBottom: 8,
+  },
+  detailTime: {
+    fontSize: 12,
+    color: '#787c7e',
+    marginTop: 4,
+  },
+  detailImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 4,
+    marginBottom: 8,
   },
   commentButtonText: {
     color: 'white',
+    fontWeight: '600',
   },
 });
