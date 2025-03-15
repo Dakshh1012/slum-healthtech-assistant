@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    
+        <script>
+            L_NO_TOUCH = false;
+            L_DISABLE_3D = false;
+        </script>
+    
+    <style>html, body {width: 100%;height: 100%;margin: 0;padding: 0;}</style>
+    <style>#map {position:absolute;top:0;bottom:0;right:0;left:0;}</style>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_418ed92760305461180b5cd0ad1337f0 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+        
+    <script src="https://cdn.jsdelivr.net/gh/python-visualization/folium@main/folium/templates/leaflet_heat.min.js"></script>
+</head>
+<body>
+    
+    
+<div style="position: fixed; 
+    top: 10px; left: 50px; width: 300px; height: 40px; 
+    background-color: white; border:2px solid grey; z-index:9999; 
+    font-size:16px; font-weight: bold; padding: 10px">
+    Indian Region: Multi-Hazard Risk Assessment
+</div>
+    
+<div style="position: fixed; 
+    bottom: 50px; left: 50px; width: 200px; 
+    background-color: white; border:2px solid grey; z-index:9999; 
+    font-size:14px; padding: 10px">
+    <p><b>Risk Legend:</b></p>
+    <p><i style="background: blue; width: 15px; height: 15px; display: inline-block; opacity: 0.7;"></i> Flood Risk</p>
+    <p><i style="background: #FF4500; width: 15px; height: 15px; display: inline-block; opacity: 0.7;"></i> Dengue Risk</p>
+    <p><i style="background: #006400; width: 15px; height: 15px; display: inline-block; opacity: 0.7;"></i> Malaria Risk</p>
+    <p><i style="background: #B8860B; width: 15px; height: 15px; display: inline-block; opacity: 0.7;"></i> Heat Wave Risk</p>
+    <p><i style="background: #4B0082; width: 15px; height: 15px; display: inline-block; opacity: 0.7;"></i> Mental Health</p>
+</div>
+    
+            <div class="folium-map" id="map_418ed92760305461180b5cd0ad1337f0" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_418ed92760305461180b5cd0ad1337f0 = L.map(
+                "map_418ed92760305461180b5cd0ad1337f0",
+                {
+                    center: [20.5937, 78.9629],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 5,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_8ae850cfc8171d7b8f533d43e1dfb7af = L.tileLayer(
+                "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 20,
+  "maxNativeZoom": 20,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors \u0026copy; \u003ca href=\"https://carto.com/attributions\"\u003eCARTO\u003c/a\u003e",
+  "subdomains": "abcd",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_8ae850cfc8171d7b8f533d43e1dfb7af.addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+            var marker_3e57591bc584445a126445ac38bdf5aa = L.marker(
+                [20.5937, 78.9629],
+                {
+}
+            ).addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+            var icon_c8cfd7fb1885d285b6eb0674503d3995 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_b570b63381c631bcb6af216b611fcabe = L.popup({
+  "maxWidth": 350,
+});
+
+        
+            
+                var html_9a08b0c0c194fb7a4240d8da030790fb = $(`<div id="html_9a08b0c0c194fb7a4240d8da030790fb" style="width: 100.0%; height: 100.0%;"><b>Primary Risk Assessment</b><br>Rainfall (mm): 150<br>Temperature (°C): 30<br>Humidity (%): 70<br>River Discharge (m³/s): 20000<br>Water Level (m): 5<br>Elevation (m): 200<br>Population Density: 5000<br>Infrastructure: 1<br>Historical Floods: 1<br>Land Cover_Agricultural: 1<br>Land Cover_Desert: 0<br>Land Cover_Forest: 0<br>Land Cover_Urban: 0<br>Land Cover_Water Body: 0<br>Soil Type_Clay: 0<br>Soil Type_Loam: 0<br>Soil Type_Peat: 0<br>Soil Type_Sandy: 0<br>Soil Type_Silt: 0<br>Dengue Risk: 8<br>Malaria Risk: 7<br>Mental Health Vulnerability: 6<br>Heat Wave Risk: 9<br></div>`)[0];
+                popup_b570b63381c631bcb6af216b611fcabe.setContent(html_9a08b0c0c194fb7a4240d8da030790fb);
+            
+        
+
+        marker_3e57591bc584445a126445ac38bdf5aa.bindPopup(popup_b570b63381c631bcb6af216b611fcabe)
+        ;
+
+        
+    
+    
+                marker_3e57591bc584445a126445ac38bdf5aa.setIcon(icon_c8cfd7fb1885d285b6eb0674503d3995);
+            
+    
+            var heat_map_29ca32e3e23a738147a48aba38b6e2bf = L.heatLayer(
+                [[21.338771229516848, 78.75550354824323, 7.659969709057025], [18.925879822929616, 79.44125327703408, 1.6239780813448106], [22.962519223261086, 80.11405209372937, 1.0823379771832098], [19.722382798964727, 78.17514528923279, 1.7336180394137353], [20.95664340734905, 76.09297963301331, 2.727780074568463], [21.81836762142699, 76.6770860035762, 1.5579754426081673], [19.23166388671818, 76.84444444799706, 2.8242799368681437], [19.64948755861362, 79.85948070036892, 3.0569377536544464], [19.777125913212224, 79.1292838845648, 3.4301794076057535], [19.69331922484113, 80.38405973156996, 1.3906884560255355], [19.691140081655902, 81.74131727676341, 1.4881529393791153], [19.79322679423627, 78.95460820651982, 4.637281608315128], [21.827517368154783, 77.13163452504347, 2.246844304357644], [24.76116956232866, 80.75335958642349, 1.7394178221021082], [21.701399869993114, 79.21995242178497, 1.353970008207678], [19.080071985702336, 76.58795867969468, 2.0853961270955836], [19.902741843560317, 80.54858333932837, 2.123738038749523], [18.897871542977647, 79.16454332394204, 4.208787923016159], [19.57831699954106, 79.88041443326131, 1.0220884684944096], [21.466884192069557, 80.29452268939004, 3.9160286721639492], [19.33487371516604, 78.49908143622318, 4.4524137035023745], [18.331470065678776, 80.61237046367724, 1.2542334011440945], [18.934197538990958, 77.168590063879, 3.9184247133522563], [21.845893128845642, 79.40774207649346, 2.888859700647797], [21.13615403757145, 77.99522036809232, 4.04314019446759], [22.83685137932521, 79.47017187798998, 2.975182385457563], [16.66408234386538, 80.19575375656284, 1.1016765069763808], [18.465574312112892, 80.52663742600913, 3.034282764658811], [20.26419216824373, 79.49856885726763, 6.051914615178148], [19.409812506953116, 80.07846692565684, 1.307919639315172], [19.380959595660215, 78.2102644346232, 4.718790609370292], [21.345872497287207, 80.70017997939804, 4.485842360750871], [19.79905969434944, 79.73280114967004, 8.46279499244989], [22.651493200324662, 79.22622994093226, 4.584365199693973], [19.54062035918397, 78.47140678010335, 1.9117406501677667], [22.504300430209334, 78.52497099376157, 4.442922333025374], [20.601370184963688, 78.61101929993728, 6.0870550157438945], [20.00042532262956, 78.52919471529509, 5.68807585701814], [20.351771432500986, 79.56897628522181, 6.59395310871683], [19.179114787299106, 81.06883810798894, 4.887128330883843], [17.715543177051437, 78.92312918682617, 2.1393619775098704], [20.7472215238245, 78.31398607917798, 6.5133951161443076], [20.305158552828313, 79.41522101350043, 4.7244743604561155], [21.103431446279963, 78.95182977508314, 5.210276357557502], [22.30793422177253, 80.09079954903017, 1.9505501759695987], [19.390958234975457, 81.03892357839902, 3.529223322374318], [21.473985640700405, 82.24858343871497, 1.3611590802176332], [19.853551276695008, 80.34764391251294, 1.746074041599417], [20.74317704763146, 78.20768651882571, 7.387821809211412], [20.607416518610204, 78.41459105475118, 5.1324788759896895]],
+                {
+  "minOpacity": 0.4,
+  "maxZoom": 18,
+  "radius": 25,
+  "blur": 15,
+  "gradient": {
+  "0.2": "#87CEFA",
+  "0.4": "#6495ED",
+  "0.6": "#0000FF",
+  "0.8": "#00008B",
+  "1.0": "#191970",
+},
+}
+            );
+        
+    
+            heat_map_29ca32e3e23a738147a48aba38b6e2bf.addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+            var heat_map_abf00cffe6aad9e722441888ca3d3115 = L.heatLayer(
+                [[19.450087400391727, 79.79441470144464, 8.45468869051233], [20.628083751173214, 79.35024383619586, 5.687604720729967], [19.645422695364633, 79.23745693865604, 9.623468091392814], [19.943978481962265, 79.85218525897378, 8.299920230170894], [20.35292195422289, 80.3778999279977, 7.648252891780032], [19.966556329519776, 79.31879329803316, 9.486078789766633], [20.375617955973897, 80.01017601024412, 6.6951489552435035], [21.10327776998514, 78.85589769076532, 9.485551299762886], [20.369044995242113, 79.70541374664789, 8.21015823077144], [20.35210178864921, 80.05608100280365, 5.045985258083149], [20.398850731309075, 78.96285400738155, 5.025307919231094], [20.31608310839403, 78.61110157534854, 8.459475988463467], [19.359787551958146, 79.92248752604368, 8.56089610673768], [19.66787440273525, 78.67160036281564, 8.73245702559012], [20.868063290471024, 79.75184664885555, 8.288064461501717], [19.586351237014437, 79.56500329669983, 6.838579015297167], [19.571039899262132, 78.8918328005242, 9.865052773762228], [20.808771483733626, 79.29518384426434, 8.155693129986314], [20.202801324314535, 80.48037385401013, 7.884519423131795], [19.209216312972917, 79.43872924073364, 8.612260576307527], [19.444075251357223, 79.80063069067023, 9.70229292176457], [20.10680732778284, 79.98113857256342, 9.833274095218348], [19.600944397352116, 78.4025069427199, 9.255683357584285], [19.545467366551964, 79.10382427765506, 7.784006312291751], [20.314926648095827, 79.73262216581018, 7.850305850446825], [20.35536760606159, 78.89664417602675, 9.950269250521316], [20.234446102912198, 78.66282079151857, 9.386865359639778], [20.804413010362317, 80.20923898086842, 8.512420419935546], [19.229331442430038, 78.80642247205942, 9.046805777392567], [20.406814383909598, 79.64294524368609, 9.566202762782357]],
+                {
+  "minOpacity": 0.4,
+  "maxZoom": 18,
+  "radius": 20,
+  "blur": 15,
+  "gradient": {
+  "0.4": "#FFFF00",
+  "0.6": "#FFA500",
+  "0.8": "#FF4500",
+  "1.0": "#8B0000",
+},
+}
+            );
+        
+    
+            heat_map_abf00cffe6aad9e722441888ca3d3115.addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+            var heat_map_bbb3df919d2e17bff63c9d59a5a2a868 = L.heatLayer(
+                [[20.505738149044838, 81.04508519252379, 7.991475894833876], [21.158405062377668, 78.7534620884033, 7.978963347180505], [19.84148460428772, 78.57007537639461, 5.87791476319972], [20.22571823848747, 77.2781568657365, 4.17971136898371], [21.945426853338805, 76.46908784592661, 5.432706260641422], [19.762074555688084, 78.02705897003266, 4.186740943746072], [19.71615450736845, 78.8340604775739, 4.635302563259424], [21.342004112906302, 78.06574080005687, 5.079105137484216], [19.50940669462629, 78.13606687166559, 4.258408605843038], [22.004928765913967, 79.43763100665643, 7.187149507491033], [18.473585930673913, 78.11206345181554, 7.975930973843518], [19.738101004624653, 76.62759411272758, 4.39228190671133], [20.497689823184363, 78.6555041553361, 6.044764722071349], [19.826302327079706, 77.70862247479154, 5.251214490822976], [21.506063392224874, 78.28688536876876, 7.300986883588656], [20.395537012368326, 79.2839807891836, 7.058603731171761], [18.878204027236787, 77.575512741707, 5.779863393256308], [19.903786431034664, 79.46050454437786, 4.489170803255007], [17.50068612794474, 77.14338988693257, 4.866009349550076], [18.49773074275388, 76.92274572672525, 7.079250490261082], [19.74166441064241, 78.06749246182888, 5.873063073132356], [20.140507121845474, 79.84129754276026, 8.28244920594161], [19.308493079161636, 78.33258277941061, 4.352843737002149], [19.93173397933476, 78.01161728569373, 6.928877906367316], [20.184513876200995, 78.49260453961685, 5.940849631032609]],
+                {
+  "minOpacity": 0.3,
+  "maxZoom": 18,
+  "radius": 20,
+  "blur": 15,
+  "gradient": {
+  "0.4": "#98FB98",
+  "0.6": "#3CB371",
+  "0.8": "#2E8B57",
+  "1.0": "#006400",
+},
+}
+            );
+        
+    
+            heat_map_bbb3df919d2e17bff63c9d59a5a2a868.addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+            var heat_map_9e236ea67ca1e22844cb0d1e5d84d06f = L.heatLayer(
+                [[20.47856632222867, 79.67421764161625, 8.18246715726374], [20.941914904964413, 78.15121720648457, 9.844762255295656], [20.60726723394764, 77.77049826128572, 7.275902521175045], [20.504335243055788, 78.41250209702102, 6.472659310486625], [22.04571109384669, 79.01545024746237, 9.509888054108211], [21.90656211883896, 78.19252884192362, 7.128138290285226], [21.645437010465074, 76.85277204207252, 9.227338957069056], [21.07279840603585, 77.68022738330878, 7.488072343171133], [20.424497271818787, 78.72483731774678, 9.72302930241426], [20.87601879677278, 78.6616768519872, 9.00348427116599], [20.6857846472287, 77.82452305597246, 9.610211626718266], [22.39917880715433, 77.58390384163276, 7.280198404122447], [20.854475202130242, 78.41687471106785, 6.043350605921193], [21.417866352488442, 77.43275694563232, 9.802428587750224], [23.006017639839968, 78.62812708254691, 7.793782087913279], [20.087682618500295, 76.34871138721226, 8.690073824308154], [21.86437832952311, 78.22995610346979, 9.158472571178216], [21.081453227153084, 76.66564562851417, 6.230235040066577], [19.003682251369717, 79.33333151656672, 9.5508167310332], [20.268202803207487, 77.241514158347, 6.571966728211343], [21.707541341475423, 78.92078078809999, 6.404490704491161], [21.33866657110872, 77.05595682462886, 6.291052025456774], [21.652809202614527, 78.43544159143048, 6.325395122567599], [19.645615658502674, 76.15543622562345, 9.25119826903001], [20.429472556695575, 78.92301136624818, 6.334002866794675], [21.404607565598003, 79.03825621694955, 7.696888036987906], [20.79137575792369, 77.5583371710097, 7.874642567976505], [21.416418560338087, 76.73566905644768, 8.984179517061694], [21.586386483800403, 77.65177300613175, 7.499482318094817], [21.783843991711112, 77.16167952811416, 6.89438335407781], [21.16335266451888, 78.54640430635847, 9.971859184477202], [21.19137609854883, 76.78989021614453, 9.877210142476397], [23.369461297567202, 77.96912668504993, 8.782994755938468], [23.246882457511553, 76.79555243711195, 8.337257247692401], [20.98276806437049, 78.5392091264811, 8.480530391206146]],
+                {
+  "minOpacity": 0.4,
+  "maxZoom": 18,
+  "radius": 30,
+  "blur": 15,
+  "gradient": {
+  "0.4": "#FFFACD",
+  "0.6": "#F0E68C",
+  "0.8": "#DAA520",
+  "1.0": "#B8860B",
+},
+}
+            );
+        
+    
+            heat_map_9e236ea67ca1e22844cb0d1e5d84d06f.addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+            var heat_map_f1593ba1a47f052f503ba8db66b1d64a = L.heatLayer(
+                [[20.57383907890961, 78.46320367727799, 6.391095214819947], [21.51000020200899, 77.857834337502, 5.233203910894955], [21.16457798788858, 79.70098541960795, 5.928582848858984], [21.279373755163395, 79.2481619100066, 5.487850818034674], [20.33358339648968, 79.67862938292718, 7.798185450062039], [20.956894442104048, 78.62178940550639, 7.431659992345499], [20.13713273545456, 79.4398361870827, 7.909743193443809], [21.131517578943704, 78.90226151748533, 6.4060794793849105], [20.196486170602817, 78.46321248852311, 5.169126489952781], [21.123394654499847, 78.91407414516583, 7.999153019858392], [20.996321849859093, 78.78639029688237, 7.3069622455415315], [20.83718814589178, 77.96333826373126, 5.387478245454485], [21.05384781585595, 79.02011941702938, 5.6859284165103885], [21.523923407055236, 79.53358549845909, 6.074488154098521], [21.159857005989796, 78.38865673172172, 6.56092310271138], [21.05113073410695, 79.5385314273665, 7.556544500955621], [22.024073962440994, 79.64057042122161, 7.629960807975035], [20.483508376368924, 78.62835278103553, 5.086348028940017], [21.316387974792573, 79.44721577876618, 7.11223930429767], [20.776874836614077, 78.59174568068781, 5.043633997003646]],
+                {
+  "minOpacity": 0.3,
+  "maxZoom": 18,
+  "radius": 15,
+  "blur": 15,
+  "gradient": {
+  "0.4": "#E6E6FA",
+  "0.6": "#D8BFD8",
+  "0.8": "#9370DB",
+  "1.0": "#4B0082",
+},
+}
+            );
+        
+    
+            heat_map_f1593ba1a47f052f503ba8db66b1d64a.addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+            var polygon_4aaa756ad4ef8be632ddd7fb0388ad2c = L.polygon(
+                [[20.5937, 78.9629], [20.7, 78.5], [20.5, 78.2], [20.3, 78.6]],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+        var popup_fc5f89f3cd65acf8f99c21264c7078fd = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_523f3f27a01fe8fdbdaf1bd4bb718ad0 = $(`<div id="html_523f3f27a01fe8fdbdaf1bd4bb718ad0" style="width: 100.0%; height: 100.0%;">Major Flood-Prone Area: High risk during monsoon season with historical flood depth of 2-3m</div>`)[0];
+                popup_fc5f89f3cd65acf8f99c21264c7078fd.setContent(html_523f3f27a01fe8fdbdaf1bd4bb718ad0);
+            
+        
+
+        polygon_4aaa756ad4ef8be632ddd7fb0388ad2c.bindPopup(popup_fc5f89f3cd65acf8f99c21264c7078fd)
+        ;
+
+        
+    
+    
+            var polygon_52febac2f31ea08d557d5d0fbc120cb7 = L.polygon(
+                [[20.1, 79.3], [20.3, 79.5], [20.4, 79.3], [20.2, 79.1]],
+                {"bubblingMouseEvents": true, "color": "#FF4500", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FF4500", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+        var popup_b66c49a94b9aad3eac1049a6424cb68f = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_8f415f6fc8d5d124cf7e918e3cebbf4b = $(`<div id="html_8f415f6fc8d5d124cf7e918e3cebbf4b" style="width: 100.0%; height: 100.0%;">Dengue Outbreak Zone: 120 cases reported in last season. High Aedes mosquito population.</div>`)[0];
+                popup_b66c49a94b9aad3eac1049a6424cb68f.setContent(html_8f415f6fc8d5d124cf7e918e3cebbf4b);
+            
+        
+
+        polygon_52febac2f31ea08d557d5d0fbc120cb7.bindPopup(popup_b66c49a94b9aad3eac1049a6424cb68f)
+        ;
+
+        
+    
+    
+            var polygon_5373c68678f7b229b61226f651a44482 = L.polygon(
+                [[19.9, 77.8], [20.1, 78.1], [20.3, 77.9], [20.1, 77.6]],
+                {"bubblingMouseEvents": true, "color": "#006400", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#006400", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+        var popup_f0606775150267cfad5a722135cfa267 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_e5b118b21bcdbda68119b3f5169fa954 = $(`<div id="html_e5b118b21bcdbda68119b3f5169fa954" style="width: 100.0%; height: 100.0%;">Malaria Endemic Zone: P. falciparum prevalence >5%. Recommended chemoprophylaxis.</div>`)[0];
+                popup_f0606775150267cfad5a722135cfa267.setContent(html_e5b118b21bcdbda68119b3f5169fa954);
+            
+        
+
+        polygon_5373c68678f7b229b61226f651a44482.bindPopup(popup_f0606775150267cfad5a722135cfa267)
+        ;
+
+        
+    
+    
+            var polygon_fef86896950e2b34c50969fc4291ae66 = L.polygon(
+                [[21.0, 77.4], [21.3, 77.7], [21.2, 77.3], [20.9, 77.1]],
+                {"bubblingMouseEvents": true, "color": "#B8860B", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#B8860B", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+        var popup_403c76a8d764b3fd1b0b6e3f03e1d488 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_9ff104b83a52703862c9543c039d5bf6 = $(`<div id="html_9ff104b83a52703862c9543c039d5bf6" style="width: 100.0%; height: 100.0%;">Heat Wave Danger Zone: Temperatures exceeding 45°C recorded. 8 heat-related fatalities last summer.</div>`)[0];
+                popup_403c76a8d764b3fd1b0b6e3f03e1d488.setContent(html_9ff104b83a52703862c9543c039d5bf6);
+            
+        
+
+        polygon_fef86896950e2b34c50969fc4291ae66.bindPopup(popup_403c76a8d764b3fd1b0b6e3f03e1d488)
+        ;
+
+        
+    
+    
+            var polygon_c5917f271bacfeb7fd2c39ce4ace2152 = L.polygon(
+                [[20.8, 78.6], [21.0, 78.9], [21.1, 78.7], [20.9, 78.5]],
+                {"bubblingMouseEvents": true, "color": "#4B0082", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#4B0082", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+        var popup_08dc9eeed76875797a5c1c831d1c9922 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_369bd30751b323d207b2b93ebb40e616 = $(`<div id="html_369bd30751b323d207b2b93ebb40e616" style="width: 100.0%; height: 100.0%;">Mental Health Vulnerability Zone: Limited access to mental health services. Flood-related PTSD reported in 15% of population.</div>`)[0];
+                popup_08dc9eeed76875797a5c1c831d1c9922.setContent(html_369bd30751b323d207b2b93ebb40e616);
+            
+        
+
+        polygon_c5917f271bacfeb7fd2c39ce4ace2152.bindPopup(popup_08dc9eeed76875797a5c1c831d1c9922)
+        ;
+
+        
+    
+    
+            var circle_marker_02776acf15ef2eecebfe15b55e78b503 = L.circleMarker(
+                [20.55, 78.85],
+                {"bubblingMouseEvents": true, "color": "white", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+        var popup_944e9bd4d934d67138595f0d832b2f85 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_a7d74b7927cff6ec4e0a9ae4432e4c66 = $(`<div id="html_a7d74b7927cff6ec4e0a9ae4432e4c66" style="width: 100.0%; height: 100.0%;">Primary Healthcare Center: Capacity 50 beds. Equipped for malaria and dengue treatment.</div>`)[0];
+                popup_944e9bd4d934d67138595f0d832b2f85.setContent(html_a7d74b7927cff6ec4e0a9ae4432e4c66);
+            
+        
+
+        circle_marker_02776acf15ef2eecebfe15b55e78b503.bindPopup(popup_944e9bd4d934d67138595f0d832b2f85)
+        ;
+
+        
+    
+    
+            var circle_marker_cf398cb700b53f74daae0941f7359bb9 = L.circleMarker(
+                [20.25, 79.35],
+                {"bubblingMouseEvents": true, "color": "white", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+        var popup_14be23c17b395b9ab3caab022475ffba = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_fac985438606ebfd9c3d89a8be58420e = $(`<div id="html_fac985438606ebfd9c3d89a8be58420e" style="width: 100.0%; height: 100.0%;">District Hospital: Capacity 200 beds. Dengue isolation ward available.</div>`)[0];
+                popup_14be23c17b395b9ab3caab022475ffba.setContent(html_fac985438606ebfd9c3d89a8be58420e);
+            
+        
+
+        circle_marker_cf398cb700b53f74daae0941f7359bb9.bindPopup(popup_14be23c17b395b9ab3caab022475ffba)
+        ;
+
+        
+    
+    
+            var circle_marker_92c337801e79ce0cd8b89dbdefeb58c8 = L.circleMarker(
+                [20.45, 78.55],
+                {"bubblingMouseEvents": true, "color": "white", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+        var popup_9285b9df5cda57c0ce67283c8fae90f5 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_d4e7f928ee33a951fb524dd3b7440da3 = $(`<div id="html_d4e7f928ee33a951fb524dd3b7440da3" style="width: 100.0%; height: 100.0%;">Evacuation Center: Capacity 500 people. Elevated structure with medical supplies.</div>`)[0];
+                popup_9285b9df5cda57c0ce67283c8fae90f5.setContent(html_d4e7f928ee33a951fb524dd3b7440da3);
+            
+        
+
+        circle_marker_92c337801e79ce0cd8b89dbdefeb58c8.bindPopup(popup_9285b9df5cda57c0ce67283c8fae90f5)
+        ;
+
+        
+    
+    
+            var circle_marker_7b4e3716baa6fa64935f75d9f77434ac = L.circleMarker(
+                [21.05, 77.45],
+                {"bubblingMouseEvents": true, "color": "white", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+        var popup_6f01dc7966da7ed33e233c1fac51467b = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_ab65d1ab87e006d202f9a856d02dea14 = $(`<div id="html_ab65d1ab87e006d202f9a856d02dea14" style="width: 100.0%; height: 100.0%;">Cooling Center: Capacity 300 people. Air-conditioned facility for heat wave relief.</div>`)[0];
+                popup_6f01dc7966da7ed33e233c1fac51467b.setContent(html_ab65d1ab87e006d202f9a856d02dea14);
+            
+        
+
+        circle_marker_7b4e3716baa6fa64935f75d9f77434ac.bindPopup(popup_6f01dc7966da7ed33e233c1fac51467b)
+        ;
+
+        
+    
+    
+            var circle_marker_3694513afc60d337e77a26fe8ba76edf = L.circleMarker(
+                [20.95, 78.75],
+                {"bubblingMouseEvents": true, "color": "white", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "purple", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_418ed92760305461180b5cd0ad1337f0);
+        
+    
+        var popup_5b93fc33ab9c83135b0c16227d52ff7f = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_cc9e3316419f4cb52db3516bf004f82c = $(`<div id="html_cc9e3316419f4cb52db3516bf004f82c" style="width: 100.0%; height: 100.0%;">Mental Health Outreach Center: 5 counselors available. Weekly group therapy sessions.</div>`)[0];
+                popup_5b93fc33ab9c83135b0c16227d52ff7f.setContent(html_cc9e3316419f4cb52db3516bf004f82c);
+            
+        
+
+        circle_marker_3694513afc60d337e77a26fe8ba76edf.bindPopup(popup_5b93fc33ab9c83135b0c16227d52ff7f)
+        ;
+
+        
+    
+    
+            var layer_control_dad8833626903a72945c79eacb333dcb_layers = {
+                base_layers : {
+                    "cartodbpositron" : tile_layer_8ae850cfc8171d7b8f533d43e1dfb7af,
+                },
+                overlays :  {
+                    "Flood Risk Heatmap" : heat_map_29ca32e3e23a738147a48aba38b6e2bf,
+                    "Dengue Risk" : heat_map_abf00cffe6aad9e722441888ca3d3115,
+                    "Malaria Risk" : heat_map_bbb3df919d2e17bff63c9d59a5a2a868,
+                    "Heat Wave Risk" : heat_map_9e236ea67ca1e22844cb0d1e5d84d06f,
+                    "Mental Health Vulnerability" : heat_map_f1593ba1a47f052f503ba8db66b1d64a,
+                },
+            };
+            let layer_control_dad8833626903a72945c79eacb333dcb = L.control.layers(
+                layer_control_dad8833626903a72945c79eacb333dcb_layers.base_layers,
+                layer_control_dad8833626903a72945c79eacb333dcb_layers.overlays,
+                {
+  "position": "topright",
+  "collapsed": true,
+  "autoZIndex": true,
+}
+            ).addTo(map_418ed92760305461180b5cd0ad1337f0);
+
+        
+</script>
+</html>
