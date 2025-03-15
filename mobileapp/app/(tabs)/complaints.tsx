@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Modal,
   FlatList,
+  Text,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -88,22 +89,28 @@ const NGODropdownPicker = ({ selectedNgo, ngos, onSelect } : {
 }) => {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(selectedNgo?.id || null);
-  const [items, setItems] = useState(
-    ngos.map(ngo => ({
-      label: `${ngo.name} - ${ngo.address}`,
+  const [items, setItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    console.log("Updating dropdown items with NGOs:", ngos);
+    const formattedItems = ngos.map(ngo => ({
+      label: ngo.name,
       value: ngo.id,
       ngo: ngo
-    }))
-  );
+    }));
+    console.log("Formatted items:", formattedItems);
+    setItems(formattedItems);
+  }, [ngos]);
 
   useEffect(() => {
     if (value) {
       const selected = ngos.find(ngo => ngo.id === value);
+      console.log("Selected NGO:", selected);
       onSelect(selected || null);
     } else {
       onSelect(null);
     }
-  }, [value]);
+  }, [value, ngos]);
 
   return (
     <View style={{ zIndex: 2000 }}> 
@@ -122,6 +129,8 @@ const NGODropdownPicker = ({ selectedNgo, ngos, onSelect } : {
         selectedItemContainerStyle={styles.dropdownSelectedItem}
         searchable={true}
         searchPlaceholder="Search NGO..."
+        loading={items.length === 0}
+        listMode="SCROLLVIEW"
       />
     </View>
   );
@@ -179,17 +188,26 @@ export default function ComplaintsScreen() {
     fetchPastRequests();
   }, []);
 
+  useEffect(() => {
+    console.log("NGOs state updated:", ngos);
+  }, [ngos]);
+
   const fetchNGOs = async () => {
     try {
       const { data, error } = await supabase
         .from("ngo")
-        .select("id, name, email, phone, address");
+        .select("*");
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
+
+      console.log("Fetched NGOs:", data);
       setNgos(data || []);
     } catch (error) {
       console.error("Error fetching NGOs:", error);
-      Alert.alert("Error", "Failed to fetch NGOs");
+      Alert.alert("Error", "Failed to fetch NGOs. Please check your connection and try again.");
     }
   };
 
@@ -380,10 +398,10 @@ export default function ComplaintsScreen() {
       <View style={styles.mainContent}>
         {/* Form Section - Always visible */}
         <View style={[styles.formSection, { zIndex: 1000 }]}>
-          <Text style={styles.headline}>Let your voice be heard!</Text>
+          <TranslatedText style={styles.headline} textKey="complaints.headline" fallback="Let your voice be heard!" />
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Select NGO:</Text>
+            <TranslatedText style={styles.label} textKey="complaints.selectNgo" fallback="Select NGO:" />
             <NGODropdownPicker
               selectedNgo={selectedNgo}
               ngos={ngos}
@@ -410,7 +428,7 @@ export default function ComplaintsScreen() {
           />
 
           <View style={styles.severityContainer}>
-            <Text style={styles.dropdownLabel}>Severity:</Text>
+            <TranslatedText style={styles.dropdownLabel} textKey="complaints.severity" fallback="Severity:" />
             <View style={styles.severityButtonsContainer}>
               <SeverityButton
                 level="low"
@@ -434,7 +452,7 @@ export default function ComplaintsScreen() {
           </View>
 
           <View style={styles.imageUploadContainer}>
-            <Text style={styles.imageUploadLabel}>Add Images (Max 5):</Text>
+            <TranslatedText style={styles.imageUploadLabel} textKey="complaints.addImages" fallback="Add Images (Max 5):" />
             <View style={styles.imagePreviewContainer}>
               {images.map((uri, index) => (
                 <View key={index} style={styles.imagePreviewWrapper}>
@@ -443,7 +461,7 @@ export default function ComplaintsScreen() {
                     style={styles.removeImageButton}
                     onPress={() => removeImage(index)}
                   >
-                    <Text style={styles.removeImageText}>X</Text>
+                    <TranslatedText style={styles.removeImageText} textKey="complaints.removeImage" fallback="X" />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -466,14 +484,14 @@ export default function ComplaintsScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.submitButtonText}>Submit Complaint</Text>
+              <TranslatedText style={styles.submitButtonText} textKey="complaints.submit" fallback="Submit Complaint" />
             )}
           </TouchableOpacity>
         </View>
 
         {/* Past Requests Section - Scrollable */}
         <View style={styles.pastRequestsSection}>
-          <Text style={styles.pastRequestsTitle}>Your Past Requests</Text>
+          <TranslatedText style={styles.pastRequestsTitle} textKey="complaints.pastRequests" fallback="Your Past Requests" />
           <FlatList
             data={pastRequests}
             keyExtractor={(item) => item.id}
@@ -638,27 +656,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  dropdownPicker: {
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    backgroundColor: THEME.card,
+    minHeight: 50,
+    borderWidth: 1,
+  },
   dropdownContainer: {
     borderColor: '#E5E7EB',
     backgroundColor: THEME.card,
     borderRadius: 12,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
-  dropdownPicker: {
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    backgroundColor: THEME.card,
+  dropdownItemContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    padding: 10,
   },
   dropdownPickerText: {
     fontSize: 16,
     color: THEME.text.primary,
-  },
-  dropdownItemContainer: {
-    borderBottomColor: '#E5E7EB',
   },
   dropdownSelectedItem: {
     backgroundColor: '#E0F2F1',
