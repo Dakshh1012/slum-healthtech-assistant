@@ -8,7 +8,10 @@ import os
 import wave
 import time
 import random
-
+from brain_of_doctor import encode_image, analyze_image_with_query
+from voice_of_patient import record_audio, transcribe_with_groq
+from voice_of_the_doctor import text_to_speech_with_gtts_old
+GROQ_API_KEY="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"
 app = Flask(__name__)
 
 # Initialize CORS
@@ -120,19 +123,6 @@ def text_to_speech(text, lang="en", output_file="response.mp3"):
         voice_options = {
             "en": ["com.au", "co.uk", "us", "ca", "co.in"],  # Different English accents
             "hi": ["co.in"],  # Hindi with Indian accent
-            "es": ["es", "com.mx"],  # Spanish options
-            "fr": ["fr", "ca"],  # French options
-            "de": ["de"],  # German
-            "ja": ["jp"],  # Japanese
-            "ko": ["kr"],  # Korean
-            "zh-CN": ["cn"],  # Chinese
-            "ru": ["ru"],  # Russian
-            "pt": ["com.br", "pt"],  # Portuguese options
-            "it": ["it"],  # Italian
-            "nl": ["nl"],  # Dutch
-            "pl": ["pl"],  # Polish
-            "sv": ["se"],  # Swedish
-            "tr": ["com.tr"],  # Turkish
         }
         
         # Select appropriate TLD for more natural voices
@@ -237,6 +227,51 @@ def therapist_route():
 def download_file(filename):
     return send_file(filename, as_attachment=True)
 
-# Run the Flask app
+system_prompt = """You have to act as a professional doctor. I know you are not, but this is for learning purposes. 
+What's in this image? Do you find anything wrong with it medically? 
+If you make a differential, suggest some remedies for them. Do not add any numbers or special characters in 
+your response. Your response should be in one long paragraph. Always answer as if you are answering a real person. 
+Do not say 'In the image I see' but say 'With what I see, I think you have ....'
+Do not respond as an AI model, your answer should mimic that of an actual doctor, not an AI bot. 
+Keep your answer concise (max 2 sentences). No preamble, start your answer right away please."""
+@app.route("/doctor", methods=["POST"])
+def doctor_consultation():
+    if "audio" not in request.files:
+        return jsonify({"error": "No audio file provided"}), 400
+    
+    audio_file = request.files["audio"]
+    audio_filepath = os.path.join("uploads", audio_file.filename)
+    audio_file.save(audio_filepath)
+
+    image_filepath = None
+    if "image" in request.files:
+        image_file = request.files["image"]
+        image_filepath = os.path.join("uploads", image_file.filename)
+        image_file.save(image_filepath)
+
+    try:
+        speech_to_text_output = transcribe_with_groq(GROQ_API_KEY=GROQ_API_KEY, 
+                                                     audio_filepath=audio_filepath, 
+                                                     stt_model="whisper-large-v3")
+
+        if image_filepath:
+            doctor_response = analyze_image_with_query(
+                query=system_prompt + " " + speech_to_text_output, 
+                encoded_image=encode_image(image_filepath), 
+                model="llama-3.2-11b-vision-preview"
+            )
+        else:
+            doctor_response = "No image provided for me to analyze."
+
+        voice_of_doctor = text_to_speech_with_gtts_old(input_text=doctor_response, output_filepath="final.mp3")
+
+        return jsonify({
+            "transcription": speech_to_text_output,
+            "doctor_response": doctor_response,
+            "voice_output": "final.mp3"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     app.run(debug=True)
