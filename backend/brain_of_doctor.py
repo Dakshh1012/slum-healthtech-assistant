@@ -8,8 +8,11 @@ query="Is there something wrong with my face?"
 model="llama-3.2-90b-vision-preview"
 
 def analyze_image_with_query(query, model, encoded_image):
-    client=Groq()  
-    messages=[
+    if not GROQ_API_KEY:
+        raise ValueError("GROQ_API_KEY is not set")
+        
+    client = Groq(api_key=GROQ_API_KEY)
+    messages = [
         {
             "role": "user",
             "content": [
@@ -25,7 +28,7 @@ def analyze_image_with_query(query, model, encoded_image):
                 },
             ],
         }]
-    chat_completion=client.chat.completions.create(
+    chat_completion = client.chat.completions.create(
         messages=messages,
         model=model
     )
