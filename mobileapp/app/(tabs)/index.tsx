@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, Dimensions, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, Dimensions, ActivityIndicator, Modal, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Bell, TriangleAlert as AlertTriangle, Shield, Wind, Map as MapIcon, Globe } from 'lucide-react-native';
+import { Search, Bell, TriangleAlert as AlertTriangle, Shield, Wind, Map as MapIcon, Globe, Smile } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
 import { router, useRouter } from 'expo-router';
@@ -520,7 +520,6 @@ const ProfileAvatar = () => {
   );
 };
 
-
 // Main Home Screen Component
 export default function HomeScreen() {
   const [location, setLocation] = useState<LocationData | null>(null);
@@ -550,6 +549,8 @@ export default function HomeScreen() {
   });
 
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const [currentMood, setCurrentMood] = useState<string>('neutral');
+  const [showMoodPicker, setShowMoodPicker] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -652,8 +653,45 @@ const getAqiMessage = (aqi: number) => {
   return 'Air quality data unavailable.';
 };
 
+const MoodPicker = ({ onSelect, onClose }: { onSelect: (mood: string) => void, onClose: () => void }) => {
+  const moods = [
+    { id: 'happy', emoji: '😊', label: 'Happy' },
+    { id: 'excited', emoji: '🤗', label: 'Excited' },
+    { id: 'neutral', emoji: '😐', label: 'Neutral' },
+    { id: 'sad', emoji: '😔', label: 'Sad' },
+    { id: 'angry', emoji: '😠', label: 'Angry' },
+  ];
 
-
+  return (
+    <Modal
+      visible={true}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.moodPickerContainer}>
+          <Text style={styles.moodPickerTitle}>How are you feeling today?</Text>
+          <View style={styles.moodGrid}>
+            {moods.map((mood) => (
+              <TouchableOpacity
+                key={mood.id}
+                style={styles.moodOption}
+                onPress={() => {
+                  onSelect(mood.id);
+                  onClose();
+                }}
+              >
+                <Text style={styles.moodEmoji}>{mood.emoji}</Text>
+                <Text style={styles.moodLabel}>{mood.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -665,6 +703,12 @@ const getAqiMessage = (aqi: number) => {
         <View style={styles.headerIcons}>
           <LanguagePicker />
           <TouchableOpacity 
+            onPress={() => router.push('/mood')}
+            style={styles.iconButton}
+          >
+            <Smile size={24} color={THEME.text.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity 
             onPress={() => {
               setHasUnreadNotifications(false);
               router.push('./notifications');
@@ -672,11 +716,20 @@ const getAqiMessage = (aqi: number) => {
             style={styles.notificationButton}
           >
             <Bell size={24} color={THEME.text.primary} />
-            <View style={styles.notificationBadge} />
+            {hasUnreadNotifications && <View style={styles.notificationBadge} />}
           </TouchableOpacity>
           <ProfileAvatar />
         </View>
       </View>
+      {showMoodPicker && (
+        <MoodPicker
+          onSelect={(mood) => {
+            setCurrentMood(mood);
+            // Here you could save the mood to your backend
+          }}
+          onClose={() => setShowMoodPicker(false)}
+        />
+      )}
       <ScrollView>
         <View style={styles.airQualityCard}>
           <View style={styles.aqiHeader}>
@@ -720,7 +773,7 @@ const getAqiMessage = (aqi: number) => {
           <View style={styles.mapCard}>
             <View style={styles.mapHeader}>
               <MapIcon size={22} color={THEME.primary} />
-              <TranslatedText textKey="Alert Map" style={styles.mapTitle} />
+              <TranslatedText textKey="Heatwave Map" style={styles.mapTitle} />
             </View>
             {errorMsg ? (
               <TranslatedText textKey={errorMsg} style={styles.errorText} />
@@ -1065,5 +1118,58 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: THEME.danger,
+  },
+  iconButton: {
+    height: 36,
+    width: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moodPickerContainer: {
+    backgroundColor: THEME.card,
+    borderRadius: 16,
+    padding: 20,
+    width: '80%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  moodPickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: THEME.text.primary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  moodGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  moodOption: {
+    alignItems: 'center',
+    width: '30%',
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: THEME.background,
+  },
+  moodEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  moodLabel: {
+    fontSize: 14,
+    color: THEME.text.primary,
+    textAlign: 'center',
   },
 });
