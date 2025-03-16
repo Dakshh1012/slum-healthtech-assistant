@@ -34,3 +34,28 @@ def analyze_image_with_query(query, model, encoded_image):
     )
 
     return chat_completion.choices[0].message.content
+def analyze_text_with_query(query, model="mixtral-8x7b-32768"):
+    """
+    Analyze text using the specified model.
+    """
+    if not GROQ_API_KEY:
+        raise ValueError("GROQ_API_KEY is not set")
+    
+    client = Groq(api_key=GROQ_API_KEY)
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text", 
+                    "text": query
+                }
+            ]
+        }
+    ]
+    chat_completion = client.chat.completions.create(
+        messages=messages,
+        model=model
+    )
+
+    return chat_completion.choices[0].message.content

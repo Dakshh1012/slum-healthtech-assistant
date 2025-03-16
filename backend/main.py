@@ -11,9 +11,10 @@ import random
 from brain_of_doctor import encode_image, analyze_image_with_query
 from voice_of_patient import record_audio, transcribe_with_groq
 from voice_of_the_doctor import text_to_speech_with_gtts_old
+from brain_of_doctor import analyze_text_with_query
 GROQ_API_KEY="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"
 app = Flask(__name__)
-
+from recommended_doctor import recommend_doctors
 
 # Initialize CORS
 CORS(app)
@@ -234,99 +235,8 @@ def text_to_speech_with_gtts_old(input_text, output_filepath, language):
         print(f"Error in text-to-speech: {str(e)}")
         return None
 
-@app.route("/doctor", methods=["POST"])
-def doctor_consultation():
-    if not GROQ_API_KEY:
-        return jsonify({"error": "GROQ_API_KEY is not set"}), 500
+import logging
 
-    # Check if files are present in request
-    if "audio" not in request.files or "image" not in request.files:
-        return jsonify({"error": "Both audio and image files are required"}), 400
-    
-    audio_file = request.files["audio"]
-    image_file = request.files["image"]
-    
-    # Validate file names
-    if audio_file.filename == "" or image_file.filename == "":
-        return jsonify({"error": "Both files must have valid filenames"}), 400
-
-    # Create uploads directory if it doesn't exist
-    upload_dir = os.path.join(os.getcwd(), "uploads")
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    # Save files with unique names to prevent overwrites
-    timestamp = int(time.time())
-    audio_filepath = os.path.join(upload_dir, f"{timestamp}_{audio_file.filename}")
-    image_filepath = os.path.join(upload_dir, f"{timestamp}_{image_file.filename}")
-    
-    try:
-        # Save files
-        audio_file.save(audio_filepath)
-        image_file.save(image_filepath)
-        
-        # Verify files were saved and have content
-        if os.path.getsize(audio_filepath) == 0 or os.path.getsize(image_filepath) == 0:
-            raise ValueError("One or both files are empty")
-
-        # Step 1: Transcribe the audio to text
-        speech_to_text_output = transcribe_with_groq(
-            stt_model="whisper-large-v3",
-            audio_filepath=audio_filepath,
-            GROQ_API_KEY=GROQ_API_KEY,
-            language="en"  # Default to English for transcription
-        )
-
-        # Step 2: Detect if the text is Hindi or Marathi
-        detected_lang = detect_language(speech_to_text_output)
-        print(f"Detected language: {detected_lang}")
-
-        # Step 3: Analyze the image and generate a response
-        doctor_response_en = analyze_image_with_query(
-            query=system_prompt + " " + speech_to_text_output,
-            encoded_image=encode_image(image_filepath),
-            model="llama-3.2-11b-vision-preview"
-        )   
-
-        # Step 4: Translate the doctor's response if needed
-        if detected_lang in ["hi", "mr"]:
-            print(f"Translating to {detected_lang}")  # Debug print
-            doctor_response = translate_text(doctor_response_en, target_lang=detected_lang)
-            print(f"Translated text: {doctor_response}")  # Debug print
-        else:
-            doctor_response = doctor_response_en
-
-        # Step 5: Convert the response to speech with explicitly set language
-        voice_filepath = text_to_speech_with_gtts_old(
-            input_text=doctor_response,
-            output_filepath="final.mp3",
-            language=detected_lang
-        )
-        
-        if not voice_filepath:
-            raise Exception("Failed to generate voice output")
-
-        # Clean up uploaded files
-        os.remove(audio_filepath)
-        os.remove(image_filepath)
-
-        return jsonify({
-            "transcription": speech_to_text_output,
-            "doctor_response": doctor_response,
-            "voice_output": "final.mp3"
-        })
-
-    except Exception as e:
-        # Clean up files in case of error
-        for filepath in [audio_filepath, image_filepath]:
-            if os.path.exists(filepath):
-                os.remove(filepath)
-        print(f"Error in doctor consultation: {str(e)}")
-        return jsonify({"error": str(e)}), 500 
-
-# Route to download the generated audio file
-@app.route("/download/<filename>", methods=["GET"])
-def download_file(filename):
-    return send_file(filename, as_attachment=True)
 
 system_prompt = """You have to act as a professional doctor. I know you are not, but this is for learning purposes. 
 What's in this image? Do you find anything wrong with it medically? 
@@ -334,7 +244,264 @@ If you make a differential, suggest some remedies for them. Do not add any numbe
 your response. Your response should be in one long paragraph. Always answer as if you are answering a real person. 
 Do not say 'In the image I see' but say 'With what I see, I think you have ....'
 Do not respond as an AI model, your answer should mimic that of an actual doctor, not an AI bot. 
-Keep your answer concise (max 2 sentences). No preamble, start your answer right away please. and also suggest 1-2 home remedies."""
+Keep your answer concise (max 2 sentences). No preamble, start your answer right away please. and also suggest 1-2 home remedies.
+Always end with im an ai please consult a real doctor for medical advice."""
+
+@app.route("/doctor_image", methods=["POST"])
+def doctor_image():
+    try:
+        logging.info("Received a request to /doctor_image")
+
+        if not GROQ_API_KEY:
+            logging.error("GROQ_API_KEY is not set")
+            return jsonify({"error": "GROQ_API_KEY is not set"}), 500
+
+        # Check if image file is present in request
+        if "image" not in request.files:
+            logging.error("Image file is required")
+            return jsonify({"error": "Image file is required"}), 400
+        
+        image_file = request.files["image"]
+        
+        # Validate file name
+        if image_file.filename == "":
+            logging.error("Image file must have a valid filename")
+            return jsonify({"error": "Image file must have a valid filename"}), 400
+
+        # Create uploads directory if it doesn't exist
+        upload_dir = os.path.join(os.getcwd(), "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Save image file with a unique name to prevent overwrites
+        timestamp = int(time.time())
+        image_filepath = os.path.join(upload_dir, f"{timestamp}_{image_file.filename}")
+        
+        logging.info(f"Saving image file to: {image_filepath}")
+
+        # Save image file
+        image_file.save(image_filepath)
+        
+        # Verify image file was saved and has content
+        if os.path.getsize(image_filepath) == 0:
+            logging.error("Image file is empty")
+            raise ValueError("Image file is empty")
+
+        # Step 1: Analyze the image and generate a response
+        logging.info("Analyzing image and generating response...")
+        doctor_response_en = analyze_image_with_query(
+            query=system_prompt,
+            encoded_image=encode_image(image_filepath),
+            model="llama-3.2-11b-vision-preview"
+        )   
+        logging.info(f"Doctor response (English): {doctor_response_en}")
+
+        # Step 2: Convert the response to speech
+        logging.info("Converting response to speech...")
+        voice_filepath = text_to_speech_with_gtts_old(
+            input_text=doctor_response_en,
+            output_filepath=os.path.join(upload_dir, f"{timestamp}_response.mp3"),
+            language="en"  # Default to English
+        )
+        
+        if not voice_filepath:
+            logging.error("Failed to generate voice output")
+            raise Exception("Failed to generate voice output")
+
+        # Step 3: Recommend doctors based on the response
+        logging.info("Recommending doctors...")
+        recommended_doctors = recommend_doctors(doctor_response_en)
+
+        # Clean up uploaded file
+        logging.info("Cleaning up uploaded file...")
+        os.remove(image_filepath)
+
+        # Return the response
+        logging.info("Sending response to client...")
+        return jsonify({
+            "doctor_response": doctor_response_en,
+            "voice_output": voice_filepath,
+            "recommended_doctors": recommended_doctors
+        })
+
+    except Exception as e:
+        logging.error(f"Error in doctor_image: {str(e)}")
+        # Clean up file in case of error
+        if os.path.exists(image_filepath):
+            os.remove(image_filepath)
+        return jsonify({"error": str(e)}), 500
+
+# Route to handle audio-based requests
+@app.route("/doctor_audio", methods=["POST"])
+def doctor_audio():
+    try:
+        logging.info("Received a request to /doctor_audio")
+
+        if not GROQ_API_KEY:
+            logging.error("GROQ_API_KEY is not set")
+            return jsonify({"error": "GROQ_API_KEY is not set"}), 500
+
+        # Check if audio file is present in request
+        if "audio" not in request.files:
+            logging.error("Audio file is required")
+            return jsonify({"error": "Audio file is required"}), 400
+        
+        audio_file = request.files["audio"]
+        
+        # Validate file name
+        if audio_file.filename == "":
+            logging.error("Audio file must have a valid filename")
+            return jsonify({"error": "Audio file must have a valid filename"}), 400
+
+        # Create uploads directory if it doesn't exist
+        upload_dir = os.path.join(os.getcwd(), "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Save audio file with a unique name to prevent overwrites
+        timestamp = int(time.time())
+        audio_filepath = os.path.join(upload_dir, f"{timestamp}_{audio_file.filename}")
+        
+        logging.info(f"Saving audio file to: {audio_filepath}")
+
+        # Save audio file
+        audio_file.save(audio_filepath)
+        
+        # Verify audio file was saved and has content
+        if os.path.getsize(audio_filepath) == 0:
+            logging.error("Audio file is empty")
+            raise ValueError("Audio file is empty")
+
+        # Step 1: Transcribe the audio to text
+        logging.info("Transcribing audio to text...")
+        speech_to_text_output = transcribe_with_groq(
+            stt_model="whisper-large-v3",
+            audio_filepath=audio_filepath,
+            GROQ_API_KEY=GROQ_API_KEY,
+            language="en"  # Default to English for transcription
+        )
+        logging.info(f"Transcription: {speech_to_text_output}")
+
+        # Step 2: Detect if the text is Hindi or Marathi
+        detected_lang = detect_language(speech_to_text_output)
+        logging.info(f"Detected language: {detected_lang}")
+
+        # Step 3: Analyze the text and generate a response
+        logging.info("Analyzing text and generating response...")
+        doctor_response_en = analyze_text_with_query(
+            query=system_prompt + " " + speech_to_text_output,
+            model="mixtral-8x7b-32768"  # Use a valid model name
+        )   
+        logging.info(f"Doctor response (English): {doctor_response_en}")
+
+        # Step 4: Translate the doctor's response if needed
+        if detected_lang in ["hi", "mr"]:
+            logging.info(f"Translating to {detected_lang}...")
+            doctor_response = translate_text(doctor_response_en, target_lang=detected_lang)
+            logging.info(f"Translated text: {doctor_response}")
+        else:
+            doctor_response = doctor_response_en
+
+        # Step 5: Convert the response to speech with explicitly set language
+        logging.info("Converting response to speech...")
+        voice_filepath = text_to_speech_with_gtts_old(
+            input_text=doctor_response,
+            output_filepath=os.path.join(upload_dir, f"{timestamp}_response.mp3"),
+            language=detected_lang
+        )
+        
+        if not voice_filepath:
+            logging.error("Failed to generate voice output")
+            raise Exception("Failed to generate voice output")
+
+        # Step 6: Recommend doctors based on the response
+        logging.info("Recommending doctors...")
+        recommended_doctors = recommend_doctors(doctor_response)
+
+        # Clean up uploaded file
+        logging.info("Cleaning up uploaded file...")
+        os.remove(audio_filepath)
+
+        # Return the response
+        logging.info("Sending response to client...")
+        return jsonify({
+            "transcription": speech_to_text_output,
+            "doctor_response": doctor_response,
+            "voice_output": voice_filepath,
+            "recommended_doctors": recommended_doctors
+        })
+
+    except Exception as e:
+        logging.error(f"Error in doctor_audio: {str(e)}")
+        # Clean up file in case of error
+        if os.path.exists(audio_filepath):
+            os.remove(audio_filepath)
+        return jsonify({"error": str(e)}), 500
+
+# Route to handle text-based requests
+@app.route("/doctor_text", methods=["POST"])
+def doctor_text():
+    try:
+        logging.info("Received a request to /doctor_text")
+
+        if not GROQ_API_KEY:
+            logging.error("GROQ_API_KEY is not set")
+            return jsonify({"error": "GROQ_API_KEY is not set"}), 500
+
+        # Check if text is present in request
+        if "text" not in request.json:
+            logging.error("Text is required")
+            return jsonify({"error": "Text is required"}), 400
+        
+        text = request.json["text"]
+        
+        # Step 1: Detect if the text is Hindi or Marathi
+        detected_lang = detect_language(text)
+        logging.info(f"Detected language: {detected_lang}")
+
+        # Step 2: Analyze the text and generate a response
+        logging.info("Analyzing text and generating response...")
+        doctor_response_en = analyze_text_with_query(
+            query=system_prompt + " " + text,
+            model="mixtral-8x7b-32768"  # Use a valid model name
+        )   
+        logging.info(f"Doctor response (English): {doctor_response_en}")
+
+        # Step 3: Translate the doctor's response if needed
+        if detected_lang in ["hi", "mr"]:
+            logging.info(f"Translating to {detected_lang}...")
+            doctor_response = translate_text(doctor_response_en, target_lang=detected_lang)
+            logging.info(f"Translated text: {doctor_response}")
+        else:
+            doctor_response = doctor_response_en
+
+        # Step 4: Convert the response to speech with explicitly set language
+        logging.info("Converting response to speech...")
+        voice_filepath = text_to_speech_with_gtts_old(
+            input_text=doctor_response,
+            output_filepath=os.path.join("uploads", f"{int(time.time())}_response.mp3"),
+            language=detected_lang
+        )
+        
+        if not voice_filepath:
+            logging.error("Failed to generate voice output")
+            raise Exception("Failed to generate voice output")
+
+        # Step 5: Recommend doctors based on the response
+        logging.info("Recommending doctors...")
+        recommended_doctors = recommend_doctors(doctor_response)
+
+        # Return the response
+        logging.info("Sending response to client...")
+        return jsonify({
+            "user_input": text,
+            "doctor_response": doctor_response,
+            "doctor_response_en": doctor_response_en,
+            "voice_output": voice_filepath,
+            "recommended_doctors": recommended_doctors
+        })
+
+    except Exception as e:
+        logging.error(f"Error in doctor_text: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
