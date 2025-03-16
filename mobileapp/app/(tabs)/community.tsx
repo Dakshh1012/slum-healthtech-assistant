@@ -234,21 +234,21 @@ useEffect(() => {
           style={[styles.sortButton, sortBy === 'hot' && styles.sortButtonActive]}
           onPress={() => setSortBy('hot')}
         >
-          <TrendingUp size={16} color={sortBy === 'hot' ? '#008080' : '#666'} />
+          <TrendingUp size={16} color={sortBy === 'hot' ? '#07A996' : '#64748B'} />
           <TranslatedText textKey='Hot' style={[styles.sortButtonText, sortBy === 'hot' && styles.sortButtonTextActive]}/>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.sortButton, sortBy === 'new' && styles.sortButtonActive]}
           onPress={() => setSortBy('new')}
         >
-          <Clock size={16} color={sortBy === 'new' ? '#008080' : '#666'} />
+          <Clock size={16} color={sortBy === 'new' ? '#07A996' : '#64748B'} />
           <TranslatedText textKey='New' style={[styles.sortButtonText, sortBy === 'new' && styles.sortButtonTextActive]}/>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.sortButton, sortBy === 'top' && styles.sortButtonActive]}
           onPress={() => setSortBy('top')}
         >
-          <Star size={16} color={sortBy === 'top' ? '#008080' : '#666'} />
+          <Star size={16} color={sortBy === 'top' ? '#07A996' : '#64748B'} />
           <TranslatedText textKey='Top' style={[styles.sortButtonText, sortBy === 'top' && styles.sortButtonTextActive]}/>
         </TouchableOpacity>
       </View>
@@ -261,11 +261,11 @@ useEffect(() => {
           <View style={styles.postCard}>
             <View style={styles.voteContainer}>
               <TouchableOpacity onPress={() => handleVote(item.id, 1)}>
-                <ArrowUp size={20} color="#666" />
+                <ArrowUp size={20} color={item.votes > 0 ? '#07A996' : '#64748B'} />
               </TouchableOpacity>
               <TranslatedText textKey={formatVotes(item.votes)} style={styles.voteCount}/>
               <TouchableOpacity onPress={() => handleVote(item.id, -1)}>
-                <ArrowDown size={20} color="#666" />
+                <ArrowDown size={20} color={item.votes < 0 ? '#FF4B4B' : '#64748B'} />
               </TouchableOpacity>
             </View>
             
@@ -287,20 +287,20 @@ useEffect(() => {
                     <TranslatedText textKey={formatDate(item.timestamp)} style={styles.postTime}/>
                     <View style={styles.postActions}>
                       <TouchableOpacity style={styles.actionButton}>
-                        <MessageSquare size={16} color="#666" />
+                        <MessageSquare size={18} color="#64748B" />
                         <TranslatedText textKey={item.comments.length.toString()} style={styles.actionText}/>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.actionButton}>
-                        <Share2 size={16} color="#666" />
+                        <Share2 size={18} color="#64748B" />
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={styles.actionButton}
                         onPress={() => handleSave(item.id)}
                       >
                         <Bookmark 
-                          size={16} 
-                          color={item.saved ? '#008080' : '#666'}
-                          fill={item.saved ? '#008080' : 'none'}
+                          size={18} 
+                          color={item.saved ? '#07A996' : '#64748B'}
+                          fill={item.saved ? '#07A996' : 'none'}
                         />
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.actionButton}>
@@ -464,7 +464,7 @@ useEffect(() => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
@@ -474,49 +474,64 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: '#e6e6e6',
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 3,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#008080',
-  },
-  sortBar: {
-    flexDirection: 'row',
-    padding: 10,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e6e6e6',
-  },
-  sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 10,
-    borderRadius: 15,
-    backgroundColor: '#f0f0f0',
-  },
-  sortButtonActive: {
-    backgroundColor: '#e6f3f3',
-  },
-  sortButtonText: {
-    marginLeft: 4,
-    color: '#666',
-    fontSize: 14,
-  },
-  sortButtonTextActive: {
-    color: '#008080',
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#07A996',
+    letterSpacing: 0.5,
   },
   postButton: {
-    backgroundColor: '#008080',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: '#07A996',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 25,
+    shadowColor: '#07A996',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 4,
   },
   postButtonText: {
     color: 'white',
     fontWeight: '600',
+    fontSize: 15,
+  },
+  sortBar: {
+    flexDirection: 'row',
+    padding: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 12,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: 'rgba(7, 169, 150, 0.1)',
+  },
+  sortButtonActive: {
+    backgroundColor: 'rgba(7, 169, 150, 0.1)',
+  },
+  sortButtonText: {
+    marginLeft: 6,
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sortButtonTextActive: {
+    color: '#07A996',
   },
   postsList: {
     flex: 1,
@@ -524,43 +539,60 @@ const styles = StyleSheet.create({
   postCard: {
     flexDirection: 'row',
     backgroundColor: 'white',
-    marginVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e6e6e6',
+    marginHorizontal: 12,
+    marginVertical: 6,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(7, 169, 150, 0.1)',
   },
   voteContainer: {
-    padding: 8,
+    padding: 12,
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(7, 169, 150, 0.1)',
+    backgroundColor: 'rgba(7, 169, 150, 0.03)',
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
   },
   voteCount: {
     marginVertical: 4,
-    fontWeight: '600',
-    color: '#1a1a1b',
+    fontWeight: '700',
+    color: '#07A996',
+    fontSize: 15,
   },
   postContent: {
     flex: 1,
-    padding: 12,
+    padding: 14,
   },
   postTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     marginBottom: 8,
-    color: '#1a1a1b',
+    color: '#1E293B',
+    lineHeight: 22,
   },
   postImage: {
     width: '100%',
     height: 200,
-    borderRadius: 4,
-    marginBottom: 8,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   postText: {
-    fontSize: 14,
-    color: '#1a1a1b',
-    marginBottom: 8,
+    fontSize: 15,
+    color: '#475569',
+    lineHeight: 20,
+    marginBottom: 12,
   },
   postFooter: {
     marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    paddingTop: 8,
   },
   postMeta: {
     flexDirection: 'row',
@@ -574,17 +606,22 @@ const styles = StyleSheet.create({
   postActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 16,
-    padding: 4,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(7, 169, 150, 0.05)',
+    marginLeft: 8,
   },
   actionText: {
-    marginLeft: 4,
-    fontSize: 12,
-    color: '#787c7e',
+    marginLeft: 6,
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
   },
   emptyContainer: {
     padding: 20,
@@ -602,13 +639,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white',
     marginTop: 40,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
     elevation: 5,
   },
   modalHeader: {
@@ -618,9 +655,10 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1b',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 16,
   },
   closeButton: {
     padding: 8,
@@ -630,12 +668,14 @@ const styles = StyleSheet.create({
     color: '#787c7e',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#e6e6e6',
-    borderRadius: 4,
-    padding: 12,
-    marginBottom: 15,
-    backgroundColor: '#f8f9fa',
+    borderWidth: 1.5,
+    borderColor: 'rgba(7, 169, 150, 0.2)',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    backgroundColor: 'white',
+    fontSize: 15,
+    color: '#1E293B',
   },
   multilineInput: {
     height: 120,
@@ -676,7 +716,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   submitButton: {
-    backgroundColor: '#008080',
+    backgroundColor: '#07A996',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#07A996',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 4,
   },
   buttonText: {
     color: 'white',
@@ -696,9 +744,12 @@ const styles = StyleSheet.create({
   },
   commentItem: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    padding: 12,
+    backgroundColor: 'rgba(7, 169, 150, 0.03)',
+    marginVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(7, 169, 150, 0.1)',
   },
   commentVoteContainer: {
     alignItems: 'center',
@@ -733,19 +784,29 @@ const styles = StyleSheet.create({
   },
   commentInput: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#e6e6e6',
-    borderRadius: 4,
-    padding: 12,
-    backgroundColor: '#f8f9fa',
+    borderWidth: 1.5,
+    borderColor: 'rgba(7, 169, 150, 0.2)',
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: 'white',
+    fontSize: 15,
     maxHeight: 100,
   },
   commentButton: {
-    backgroundColor: '#008080',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 4,
+    backgroundColor: '#07A996',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 12,
     alignSelf: 'flex-start',
+    shadowColor: '#07A996',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  commentButtonText: {
+    color: 'white',
+    fontWeight: '600',
   },
   detailContent: {
     fontSize: 14,
@@ -762,9 +823,5 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 4,
     marginBottom: 8,
-  },
-  commentButtonText: {
-    color: 'white',
-    fontWeight: '600',
   },
 });
