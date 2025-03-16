@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, Dimensions, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Bell, TriangleAlert as AlertTriangle, Shield, Wind, Map as MapIcon, Globe } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
-import { useRouter } from 'expo-router';
+import { router, useRouter } from 'expo-router';
 import TranslatedText from '@/components/TranslatedText';
 import LanguagePicker from '@/components/LanguagePicker';
+import { supabase } from '@/lib/supabase';
 
 // Theme Configuration
 const THEME = {
@@ -214,7 +215,7 @@ const AirQualityParameter: React.FC<AirQualityParameterProps> = ({ title, value,
   <View style={[styles.parameter, { borderLeftColor: getStatusColor(status), borderLeftWidth: 4 }]}>
     <TranslatedText textKey={title} style={styles.parameterTitle} />
     <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-      <Text style={styles.parameterValue}>{value}</Text>
+      <TranslatedText textKey={value} style={styles.parameterValue} />
       <TranslatedText textKey={unit} style={styles.parameterUnit} />
     </View>
     <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(status) }]}>
@@ -371,7 +372,7 @@ const LocationMap = ({ location, nearbyLocations, errorMsg }: { location: Locati
   if (!location) {
     return (
       <View style={styles.mapLoadingContainer}>
-        <Text style={styles.errorText}>No location data available</Text>
+        <TranslatedText textKey="No location data available" style={styles.errorText} />
       </View>
     );
   }
@@ -416,8 +417,7 @@ const ProfileAvatar = () => {
   const router = useRouter();
   
   return (
-    <TouchableOpacity 
-      onPress={() => router.push('./profile/rahul')}
+    <TouchableOpacity
       onPress={() => router.push('./profile/rahul')}
       style={styles.avatarContainer}
     >
@@ -458,6 +458,8 @@ export default function HomeScreen() {
     year: 'numeric',
   });
 
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -476,6 +478,47 @@ export default function HomeScreen() {
       const aqiData = await fetchAqiData(location.coords.latitude, location.coords.longitude);
       setAqiData(aqiData);
     })();
+  }, []);
+
+  useEffect(() => {
+    const checkNewNotifications = async () => {
+      try {
+        const { data: notifications, error } = await supabase
+          .from('notifications')
+          .select('created_at')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+
+        // Check if there's a new notification in the last hour
+        if (notifications && notifications.length > 0) {
+          const lastNotification = new Date(notifications[0].created_at);
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+          setHasUnreadNotifications(lastNotification > oneHourAgo);
+        }
+      } catch (error) {
+        console.error('Error checking notifications:', error);
+      }
+    };
+
+    checkNewNotifications();
+    
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (_payload: { new: any }) => {
+          setHasUnreadNotifications(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchAqiData = async (latitude: number, longitude: number) => {
@@ -508,17 +551,38 @@ export default function HomeScreen() {
     return locations;
   };
 
+  // Helper Function to Get AQI Message
+const getAqiMessage = (aqi: number) => {
+  if (aqi <= 1) return 'Air quality is excellent. Enjoy your day!';
+  if (aqi === 2) return 'Air quality is good. No major concerns.';
+  if (aqi === 3) return 'Air quality is moderate. Sensitive individuals should be cautious.';
+  if (aqi === 4) return 'Air quality is unhealthy. Limit outdoor activities.';
+  if (aqi === 5) return 'Air quality is very unhealthy. Avoid outdoor activities.';
+  return 'Air quality data unavailable.';
+};
+
+
+
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Hello, Rahul</Text>
-          <Text style={styles.date}>{currentDate}</Text>
+          <TranslatedText textKey="Hello, Rahul" style={styles.greeting} />
+          <TranslatedText textKey={`${location?.longitude}, ${location?.latitude}`} style={styles.date} fallback="Loading location..." />
         </View>
         <View style={styles.headerIcons}>
           <LanguagePicker />
-          <Bell size={24} color={THEME.text.primary} />
+          <TouchableOpacity 
+            onPress={() => {
+              setHasUnreadNotifications(false);
+              router.push('./notifications');
+            }}
+            style={styles.notificationButton}
+          >
+            <Bell size={24} color={THEME.text.primary} />
+            <View style={styles.notificationBadge} />
+          </TouchableOpacity>
           <ProfileAvatar />
         </View>
       </View>
@@ -530,15 +594,19 @@ export default function HomeScreen() {
           </View>
           <View style={styles.aqiContent}>
             {aqiData ? (
-              <Text style={styles.aqiValue}>{aqiData.aqi + "/ 5" || "N/A"}</Text>
+                <TranslatedText style={styles.aqiValue} textKey={`${getAqiMessage(aqiData.aqi)}` || "N/A"}></TranslatedText>
             ) : (
-              <ActivityIndicator size="small" color={THEME.primary} />
+              <></>
             )}
-            <TranslatedText textKey="Unhealthy" style={styles.aqiCategory} />
-            <View style={styles.aqiScale}>
-              <View style={[styles.aqiIndicator, { width: '65%' }]} />
-            </View>
+            
+            
           </View>
+        </View>
+        <View style={styles.section}>
+          <TranslatedText textKey="Health Advisory" style={styles.sectionTitle} />
+          <HealthAdvisory
+            aqiLevel={aqiData?.aqi || 1}
+          />
         </View>
         {/* Map section - always visible */}
         <View style={styles.mapWrapper}>
@@ -548,7 +616,7 @@ export default function HomeScreen() {
               <TranslatedText textKey="Air Quality Map" style={styles.mapTitle} />
             </View>
             {errorMsg ? (
-              <Text style={styles.errorText}>{errorMsg}</Text>
+              <TranslatedText textKey={errorMsg} style={styles.errorText} />
             ) : (
               <LocationMap 
               location={location} 
@@ -567,21 +635,14 @@ export default function HomeScreen() {
             </>
           )}
         </View>
-        <View style={styles.section}>
-          <TranslatedText textKey="Health Advisory" style={styles.sectionTitle} />
-          <HealthAdvisory
-            aqiLevel={aqiData?.aqi || 1}
-          />
-        </View>
+        
         <View style={styles.section}>
           <TranslatedText textKey="Preventive Measures" style={styles.sectionTitle} />
           <PreventiveMeasures
             aqiLevel={aqiData?.aqi || 1}
           />
         </View>
-        <TouchableOpacity style={styles.emergencyButton}>
-          <TranslatedText textKey="Get Medical Help" style={styles.emergencyButtonText} />
-        </TouchableOpacity>
+        
         
       </ScrollView>
     </SafeAreaView>
@@ -597,6 +658,8 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   header: {
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -605,6 +668,11 @@ const styles = StyleSheet.create({
     position: 'sticky',
     top: 0,
     zIndex: 1,
+    // shadowColor: '#07A996',
+    // shadowOpacity: 0.1,
+    // shadowRadius: 12,
+    // shadowOffset: { width: 0, height: 10 },
+    // elevation: 20,
   },
   greeting: {
     fontSize: 24,
@@ -618,6 +686,7 @@ const styles = StyleSheet.create({
   },
   headerIcons: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 16,
   },
   icon: {
@@ -650,7 +719,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   aqiValue: {
-    fontSize: 48,
+    fontSize: 28,
     fontWeight: 'bold',
     color: THEME.danger,
   },
@@ -857,6 +926,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: THEME.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatar: {
     width: '100%',
@@ -873,5 +944,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: THEME.primary,
+  },
+  notificationButton: {
+    position: 'relative',
+    height: 36,
+    width: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: THEME.danger,
   },
 });

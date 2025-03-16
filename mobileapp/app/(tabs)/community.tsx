@@ -1,7 +1,9 @@
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Image, FlatList, Pressable } from 'react-native';
+import { supabase } from '@/lib/supabase';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Modal, TextInput, Image, FlatList, Pressable } from 'react-native';
 import { useState, useEffect } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { ArrowUp, ArrowDown, Award, Share2, MessageSquare, Bookmark, MoveHorizontal as MoreHorizontal, TrendingUp, Clock, Star } from 'lucide-react-native';
+import TranslatedText from '@/components/TranslatedText';
 
 // Define post type for TypeScript
 type Post = {
@@ -42,6 +44,53 @@ export default function CommunityScreen() {
   const [newComment, setNewComment] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('hot');
 
+
+
+const [loading, setLoading] = useState(true);
+
+useEffect(() => {
+  const fetchPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          id,
+          title,
+          content,
+          image_uri,
+          created_at,
+          comments (
+            id,
+            content,
+            created_at
+          ),
+          votes
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Transform data to match frontend format
+      const formattedPosts = data.map((post: any) => ({
+        ...post,
+        timestamp: new Date(post.created_at),
+        imageUri: post.image_uri,
+        comments: post.comments.map((comment: any) => ({
+          ...comment,
+          timestamp: new Date(comment.created_at)
+        }))
+      }));
+
+      setPosts(formattedPosts);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchPosts();
+}, []);
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -77,12 +126,21 @@ export default function CommunityScreen() {
     setPostModalVisible(false);
   };
 
-  const handleVote = (postId: string, value: number) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { ...post, votes: post.votes + value }
-        : post
-    ));
+  const handleVote = async (postId: string, value: number) => {
+    try {
+      const { data, error } = await supabase
+        .rpc('increment_post_votes', { post_id: postId, value })
+      
+      if (error) throw error;
+  
+      setPosts(posts.map(post => 
+        post.id === postId 
+          ? { ...post, votes: data } 
+          : post
+      ));
+    } catch (error) {
+      console.error('Voting error:', error);
+    }
   };
 
   const handleSave = (postId: string) => {
@@ -146,7 +204,7 @@ export default function CommunityScreen() {
     return votes.toString();
   };
 
-  const sortPosts = (posts: Post[]): Post[] => {
+  const sortPosts: (posts: Post[]) => Post[] = (posts: Post[]): Post[] => {
     switch (sortBy) {
       case 'hot':
         return [...posts].sort((a, b) => (b.votes + b.comments.length) - (a.votes + a.comments.length));
@@ -162,12 +220,12 @@ export default function CommunityScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Community</Text>
+        <TranslatedText textKey="Community" style={styles.title}/>
         <TouchableOpacity 
           style={styles.postButton}
           onPress={() => setPostModalVisible(true)}
         >
-          <Text style={styles.postButtonText}>Create Post</Text>
+          <TranslatedText textKey='Create Post' style={styles.postButtonText}/>
         </TouchableOpacity>
       </View>
 
@@ -176,22 +234,22 @@ export default function CommunityScreen() {
           style={[styles.sortButton, sortBy === 'hot' && styles.sortButtonActive]}
           onPress={() => setSortBy('hot')}
         >
-          <TrendingUp size={16} color={sortBy === 'hot' ? '#008080' : '#666'} />
-          <Text style={[styles.sortButtonText, sortBy === 'hot' && styles.sortButtonTextActive]}>Hot</Text>
+          <TrendingUp size={16} color={sortBy === 'hot' ? '#07A996' : '#64748B'} />
+          <TranslatedText textKey='Hot' style={[styles.sortButtonText, sortBy === 'hot' && styles.sortButtonTextActive]}/>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.sortButton, sortBy === 'new' && styles.sortButtonActive]}
           onPress={() => setSortBy('new')}
         >
-          <Clock size={16} color={sortBy === 'new' ? '#008080' : '#666'} />
-          <Text style={[styles.sortButtonText, sortBy === 'new' && styles.sortButtonTextActive]}>New</Text>
+          <Clock size={16} color={sortBy === 'new' ? '#07A996' : '#64748B'} />
+          <TranslatedText textKey='New' style={[styles.sortButtonText, sortBy === 'new' && styles.sortButtonTextActive]}/>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.sortButton, sortBy === 'top' && styles.sortButtonActive]}
           onPress={() => setSortBy('top')}
         >
-          <Star size={16} color={sortBy === 'top' ? '#008080' : '#666'} />
-          <Text style={[styles.sortButtonText, sortBy === 'top' && styles.sortButtonTextActive]}>Top</Text>
+          <Star size={16} color={sortBy === 'top' ? '#07A996' : '#64748B'} />
+          <TranslatedText textKey='Top' style={[styles.sortButtonText, sortBy === 'top' && styles.sortButtonTextActive]}/>
         </TouchableOpacity>
       </View>
       
@@ -203,11 +261,11 @@ export default function CommunityScreen() {
           <View style={styles.postCard}>
             <View style={styles.voteContainer}>
               <TouchableOpacity onPress={() => handleVote(item.id, 1)}>
-                <ArrowUp size={20} color="#666" />
+                <ArrowUp size={20} color={item.votes > 0 ? '#07A996' : '#64748B'} />
               </TouchableOpacity>
-              <Text style={styles.voteCount}>{formatVotes(item.votes)}</Text>
+              <TranslatedText textKey={formatVotes(item.votes)} style={styles.voteCount}/>
               <TouchableOpacity onPress={() => handleVote(item.id, -1)}>
-                <ArrowDown size={20} color="#666" />
+                <ArrowDown size={20} color={item.votes < 0 ? '#FF4B4B' : '#64748B'} />
               </TouchableOpacity>
             </View>
             
@@ -218,31 +276,31 @@ export default function CommunityScreen() {
                   setModalVisible(true);
                 }}
               >
-                <Text style={styles.postTitle}>{item.title}</Text>
+                <TranslatedText textKey={item.title} style={styles.postTitle}/>
                 {item.imageUri && (
                   <Image source={{ uri: item.imageUri }} style={styles.postImage} />
                 )}
-                <Text style={styles.postText} numberOfLines={3}>{item.content}</Text>
+                <TranslatedText textKey={item.content} style={styles.postText} numberOfLines={3}/>
                 
                 <View style={styles.postFooter}>
                   <View style={styles.postMeta}>
-                    <Text style={styles.postTime}>{formatDate(item.timestamp)}</Text>
+                    <TranslatedText textKey={formatDate(item.timestamp)} style={styles.postTime}/>
                     <View style={styles.postActions}>
                       <TouchableOpacity style={styles.actionButton}>
-                        <MessageSquare size={16} color="#666" />
-                        <Text style={styles.actionText}>{item.comments.length}</Text>
+                        <MessageSquare size={18} color="#64748B" />
+                        <TranslatedText textKey={item.comments.length.toString()} style={styles.actionText}/>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.actionButton}>
-                        <Share2 size={16} color="#666" />
+                        <Share2 size={18} color="#64748B" />
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={styles.actionButton}
                         onPress={() => handleSave(item.id)}
                       >
                         <Bookmark 
-                          size={16} 
-                          color={item.saved ? '#008080' : '#666'}
-                          fill={item.saved ? '#008080' : 'none'}
+                          size={18} 
+                          color={item.saved ? '#07A996' : '#64748B'}
+                          fill={item.saved ? '#07A996' : 'none'}
                         />
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.actionButton}>
@@ -257,7 +315,7 @@ export default function CommunityScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No posts yet. Be the first to share!</Text>
+            <TranslatedText textKey="No posts yet. Be the first to share!" style={styles.emptyText} />
           </View>
         }
       />
@@ -271,7 +329,7 @@ export default function CommunityScreen() {
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Create a Post</Text>
+            <TranslatedText textKey="Create a Post" style={styles.modalTitle} />
             
             <TextInput
               style={styles.input}
@@ -294,9 +352,7 @@ export default function CommunityScreen() {
                 <Image source={{ uri: newPostImage }} style={styles.previewImage} />
               ) : null}
               <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
-                <Text style={styles.imageButtonText}>
-                  {newPostImage ? "Change Image" : "Add Image"}
-                </Text>
+                <TranslatedText textKey={newPostImage ? "Change Image" : "Add Image"} style={styles.imageButtonText} />
               </TouchableOpacity>
             </View>
             
@@ -310,13 +366,13 @@ export default function CommunityScreen() {
                   setNewPostImage(null);
                 }}
               >
-                <Text style={styles.buttonText}>Cancel</Text>
+                <TranslatedText textKey="Cancel" style={styles.buttonText} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.button, styles.submitButton]}
                 onPress={handleCreatePost}
               >
-                <Text style={styles.buttonText}>Post</Text>
+                <TranslatedText textKey="Post" style={styles.buttonText} />
               </TouchableOpacity>
             </View>
           </View>
@@ -335,12 +391,12 @@ export default function CommunityScreen() {
             {selectedPost && (
               <>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>{selectedPost.title}</Text>
+                  <TranslatedText textKey={selectedPost.title} style={styles.modalTitle} />
                   <TouchableOpacity
                     style={styles.closeButton}
                     onPress={() => setModalVisible(false)}
                   >
-                    <Text style={styles.closeButtonText}>×</Text>
+                    <TranslatedText textKey="×" style={styles.closeButtonText} />
                   </TouchableOpacity>
                 </View>
                 
@@ -348,11 +404,11 @@ export default function CommunityScreen() {
                   <Image source={{ uri: selectedPost.imageUri }} style={styles.detailImage} />
                 )}
                 
-                <Text style={styles.detailContent}>{selectedPost.content}</Text>
-                <Text style={styles.detailTime}>{formatDate(selectedPost.timestamp)}</Text>
+                <TranslatedText textKey={selectedPost.content} style={styles.detailContent} />
+                <TranslatedText textKey={formatDate(selectedPost.timestamp)} style={styles.detailTime} />
                 
                 <View style={styles.commentsSection}>
-                  <Text style={styles.commentsHeader}>Comments</Text>
+                  <TranslatedText textKey="Comments" style={styles.commentsHeader} />
                   
                   <FlatList
                     data={selectedPost.comments}
@@ -364,19 +420,19 @@ export default function CommunityScreen() {
                           <TouchableOpacity onPress={() => handleCommentVote(selectedPost.id, item.id, 1)}>
                             <ArrowUp size={16} color="#666" />
                           </TouchableOpacity>
-                          <Text style={styles.commentVoteCount}>{formatVotes(item.votes || 0)}</Text>
+                          <TranslatedText textKey={formatVotes(item.votes || 0)} style={styles.commentVoteCount} />
                           <TouchableOpacity onPress={() => handleCommentVote(selectedPost.id, item.id, -1)}>
                             <ArrowDown size={16} color="#666" />
                           </TouchableOpacity>
                         </View>
                         <View style={styles.commentContent}>
-                          <Text style={styles.commentText}>{item.content}</Text>
-                          <Text style={styles.commentTime}>{formatDate(item.timestamp)}</Text>
+                          <TranslatedText textKey={item.content} style={styles.commentText} />
+                          <TranslatedText textKey={formatDate(item.timestamp)} style={styles.commentTime} />
                         </View>
                       </View>
                     )}
                     ListEmptyComponent={
-                      <Text style={styles.noComments}>No comments yet. Be the first!</Text>
+                      <TranslatedText textKey="No comments yet. Be the first!" style={styles.noComments} />
                     }
                   />
                   
@@ -392,7 +448,7 @@ export default function CommunityScreen() {
                       style={styles.commentButton}
                       onPress={handleAddComment}
                     >
-                      <Text style={styles.commentButtonText}>Comment</Text>
+                      <TranslatedText textKey="Comment" style={styles.commentButtonText} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -408,7 +464,7 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
@@ -418,49 +474,64 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: '#e6e6e6',
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 3,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#008080',
-  },
-  sortBar: {
-    flexDirection: 'row',
-    padding: 10,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e6e6e6',
-  },
-  sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 10,
-    borderRadius: 15,
-    backgroundColor: '#f0f0f0',
-  },
-  sortButtonActive: {
-    backgroundColor: '#e6f3f3',
-  },
-  sortButtonText: {
-    marginLeft: 4,
-    color: '#666',
-    fontSize: 14,
-  },
-  sortButtonTextActive: {
-    color: '#008080',
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#07A996',
+    letterSpacing: 0.5,
   },
   postButton: {
-    backgroundColor: '#008080',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: '#07A996',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 25,
+    shadowColor: '#07A996',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 4,
   },
   postButtonText: {
     color: 'white',
     fontWeight: '600',
+    fontSize: 15,
+  },
+  sortBar: {
+    flexDirection: 'row',
+    padding: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 12,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: 'rgba(7, 169, 150, 0.1)',
+  },
+  sortButtonActive: {
+    backgroundColor: 'rgba(7, 169, 150, 0.1)',
+  },
+  sortButtonText: {
+    marginLeft: 6,
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sortButtonTextActive: {
+    color: '#07A996',
   },
   postsList: {
     flex: 1,
@@ -468,43 +539,60 @@ const styles = StyleSheet.create({
   postCard: {
     flexDirection: 'row',
     backgroundColor: 'white',
-    marginVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e6e6e6',
+    marginHorizontal: 12,
+    marginVertical: 6,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(7, 169, 150, 0.1)',
   },
   voteContainer: {
-    padding: 8,
+    padding: 12,
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(7, 169, 150, 0.1)',
+    backgroundColor: 'rgba(7, 169, 150, 0.03)',
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
   },
   voteCount: {
     marginVertical: 4,
-    fontWeight: '600',
-    color: '#1a1a1b',
+    fontWeight: '700',
+    color: '#07A996',
+    fontSize: 15,
   },
   postContent: {
     flex: 1,
-    padding: 12,
+    padding: 14,
   },
   postTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     marginBottom: 8,
-    color: '#1a1a1b',
+    color: '#1E293B',
+    lineHeight: 22,
   },
   postImage: {
     width: '100%',
     height: 200,
-    borderRadius: 4,
-    marginBottom: 8,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   postText: {
-    fontSize: 14,
-    color: '#1a1a1b',
-    marginBottom: 8,
+    fontSize: 15,
+    color: '#475569',
+    lineHeight: 20,
+    marginBottom: 12,
   },
   postFooter: {
     marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    paddingTop: 8,
   },
   postMeta: {
     flexDirection: 'row',
@@ -518,17 +606,22 @@ const styles = StyleSheet.create({
   postActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 16,
-    padding: 4,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(7, 169, 150, 0.05)',
+    marginLeft: 8,
   },
   actionText: {
-    marginLeft: 4,
-    fontSize: 12,
-    color: '#787c7e',
+    marginLeft: 6,
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
   },
   emptyContainer: {
     padding: 20,
@@ -546,13 +639,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white',
     marginTop: 40,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
     elevation: 5,
   },
   modalHeader: {
@@ -562,9 +655,10 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1b',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 16,
   },
   closeButton: {
     padding: 8,
@@ -574,12 +668,14 @@ const styles = StyleSheet.create({
     color: '#787c7e',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#e6e6e6',
-    borderRadius: 4,
-    padding: 12,
-    marginBottom: 15,
-    backgroundColor: '#f8f9fa',
+    borderWidth: 1.5,
+    borderColor: 'rgba(7, 169, 150, 0.2)',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    backgroundColor: 'white',
+    fontSize: 15,
+    color: '#1E293B',
   },
   multilineInput: {
     height: 120,
@@ -620,7 +716,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   submitButton: {
-    backgroundColor: '#008080',
+    backgroundColor: '#07A996',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#07A996',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 4,
   },
   buttonText: {
     color: 'white',
@@ -640,9 +744,12 @@ const styles = StyleSheet.create({
   },
   commentItem: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    padding: 12,
+    backgroundColor: 'rgba(7, 169, 150, 0.03)',
+    marginVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(7, 169, 150, 0.1)',
   },
   commentVoteContainer: {
     alignItems: 'center',
@@ -677,19 +784,29 @@ const styles = StyleSheet.create({
   },
   commentInput: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#e6e6e6',
-    borderRadius: 4,
-    padding: 12,
-    backgroundColor: '#f8f9fa',
+    borderWidth: 1.5,
+    borderColor: 'rgba(7, 169, 150, 0.2)',
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: 'white',
+    fontSize: 15,
     maxHeight: 100,
   },
   commentButton: {
-    backgroundColor: '#008080',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 4,
+    backgroundColor: '#07A996',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 12,
     alignSelf: 'flex-start',
+    shadowColor: '#07A996',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  commentButtonText: {
+    color: 'white',
+    fontWeight: '600',
   },
   detailContent: {
     fontSize: 14,
@@ -706,9 +823,5 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 4,
     marginBottom: 8,
-  },
-  commentButtonText: {
-    color: 'white',
-    fontWeight: '600',
   },
 });

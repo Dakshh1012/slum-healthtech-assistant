@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -10,6 +9,8 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  FlatList,
+  Text,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,6 +18,7 @@ import { supabase } from '../../lib/supabase';
 import { NGO, Request, RequestMedia } from '../../lib/types';
 import { MessageCircle, Paperclip, Camera, ChevronDown, X } from 'lucide-react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
+import TranslatedText from '../../components/TranslatedText';
 
 const THEME = {
   primary: '#00BFA6',
@@ -70,10 +72,12 @@ const StatusBadge = ({ status }: { status: string }) => {
 
   return (
     <View style={[styles.statusBadge, { backgroundColor: config.backgroundColor, borderColor: config.borderColor }]}>
-      <Text style={[styles.statusIcon]}>{config.icon}</Text>
-      <Text style={[styles.statusText, { color: config.color }]}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Text>
+      <TranslatedText style={[styles.statusIcon]} textKey={`status.icon.${status.toLowerCase()}`} fallback={config.icon} />
+      <TranslatedText 
+        style={[styles.statusText, { color: config.color }]} 
+        textKey={`status.${status.toLowerCase()}`}
+        fallback={status.charAt(0).toUpperCase() + status.slice(1)}
+      />
     </View>
   );
 };
@@ -85,41 +89,50 @@ const NGODropdownPicker = ({ selectedNgo, ngos, onSelect } : {
 }) => {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(selectedNgo?.id || null);
-  const [items, setItems] = useState(
-    ngos.map(ngo => ({
-      label: `${ngo.name} - ${ngo.address}`,
+  const [items, setItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    console.log("Updating dropdown items with NGOs:", ngos);
+    const formattedItems = ngos.map(ngo => ({
+      label: ngo.name,
       value: ngo.id,
       ngo: ngo
-    }))
-  );
+    }));
+    console.log("Formatted items:", formattedItems);
+    setItems(formattedItems);
+  }, [ngos]);
 
   useEffect(() => {
     if (value) {
       const selected = ngos.find(ngo => ngo.id === value);
+      console.log("Selected NGO:", selected);
       onSelect(selected || null);
     } else {
       onSelect(null);
     }
-  }, [value]);
+  }, [value, ngos]);
 
   return (
-    <DropDownPicker
-      open={open}
-      value={value}
-      items={items}
-      setOpen={setOpen}
-      setValue={setValue}
-      setItems={setItems}
-      placeholder="Select NGO"
-      style={styles.dropdownPicker}
-      textStyle={styles.dropdownPickerText}
-      dropDownContainerStyle={styles.dropdownContainer}
-      listItemContainerStyle={styles.dropdownItemContainer}
-      selectedItemContainerStyle={styles.dropdownSelectedItem}
-      searchable={true}
-      searchPlaceholder="Search NGO..."
-      zIndex={1000}
-    />
+    <View style={{ zIndex: 2000 }}> 
+      <DropDownPicker
+        open={open}
+        value={value}
+        items={items}
+        setOpen={setOpen}
+        setValue={setValue}
+        setItems={setItems}
+        placeholder="Select NGO"
+        style={styles.dropdownPicker}
+        textStyle={styles.dropdownPickerText}
+        dropDownContainerStyle={styles.dropdownContainer}
+        listItemContainerStyle={styles.dropdownItemContainer}
+        selectedItemContainerStyle={styles.dropdownSelectedItem}
+        searchable={true}
+        searchPlaceholder="Search NGO..."
+        loading={items.length === 0}
+        listMode="SCROLLVIEW"
+      />
+    </View>
   );
 };
 
@@ -143,15 +156,15 @@ const SeverityButton = ({
     ]}
     onPress={onPress}
   >
-    <Text
+    <TranslatedText
       style={[
         styles.severityButtonText,
         selected && styles.selectedSeverityButtonText,
         !selected && { color },
       ]}
-    >
-      {level.charAt(0).toUpperCase() + level.slice(1)}
-    </Text>
+      textKey={`severity.${level}`}
+      fallback={level.charAt(0).toUpperCase() + level.slice(1)}
+    />
   </TouchableOpacity>
 );
 
@@ -175,17 +188,26 @@ export default function ComplaintsScreen() {
     fetchPastRequests();
   }, []);
 
+  useEffect(() => {
+    console.log("NGOs state updated:", ngos);
+  }, [ngos]);
+
   const fetchNGOs = async () => {
     try {
       const { data, error } = await supabase
         .from("ngo")
-        .select("id, name, email, phone, address");
+        .select("*");
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
+
+      console.log("Fetched NGOs:", data);
       setNgos(data || []);
     } catch (error) {
       console.error("Error fetching NGOs:", error);
-      Alert.alert("Error", "Failed to fetch NGOs");
+      Alert.alert("Error", "Failed to fetch NGOs. Please check your connection and try again.");
     }
   };
 
@@ -371,131 +393,132 @@ export default function ComplaintsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Headline */}
-        <Text style={styles.headline}>Let your voice be heard!</Text>
+    <SafeAreaView style={styles.container}>
+      {/* Main content */}
+      <View style={styles.mainContent}>
+        {/* Form Section - Always visible */}
+        <View style={[styles.formSection, { zIndex: 1000 }]}>
+          <TranslatedText style={styles.headline} textKey="complaints.headline" fallback="Let your voice be heard!" />
 
-        {/* NGO Selection */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Select NGO:</Text>
-          <NGODropdownPicker
-            selectedNgo={selectedNgo}
-            ngos={ngos}
-            onSelect={setSelectedNgo}
+          <View style={styles.formGroup}>
+            <TranslatedText style={styles.label} textKey="complaints.selectNgo" fallback="Select NGO:" />
+            <NGODropdownPicker
+              selectedNgo={selectedNgo}
+              ngos={ngos}
+              onSelect={setSelectedNgo}
+            />
+          </View>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Describe your issue..."
+            placeholderTextColor={THEME.text.light}
+            multiline
+            numberOfLines={4}
+            value={complaintText}
+            onChangeText={setComplaintText}
           />
-        </View>
 
-        {/* Complaint Input */}
-        <TextInput
-          style={styles.input}
-          placeholder="Describe your issue..."
-          placeholderTextColor={THEME.text.light}
-          multiline
-          numberOfLines={4}
-          value={complaintText}
-          onChangeText={setComplaintText}
-        />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter address..."
+            placeholderTextColor={THEME.text.light}
+            value={address}
+            onChangeText={setAddress}
+          />
 
-        {/* Address Input */}
-        <TextInput
-          style={styles.input}
-          placeholder="Enter address..."
-          placeholderTextColor={THEME.text.light}
-          value={address}
-          onChangeText={setAddress}
-        />
-
-        {/* Severity Buttons */}
-        <View style={styles.severityContainer}>
-          <Text style={styles.dropdownLabel}>Severity:</Text>
-          <View style={styles.severityButtonsContainer}>
-            <SeverityButton
-              level="low"
-              selected={severity === "low"}
-              onPress={() => setSeverity("low")}
-              color="#4CAF50"
-            />
-            <SeverityButton
-              level="moderate"
-              selected={severity === "moderate"}
-              onPress={() => setSeverity("moderate")}
-              color="#FF9800"
-            />
-            <SeverityButton
-              level="high"
-              selected={severity === "high"}
-              onPress={() => setSeverity("high")}
-              color="#FF5252"
-            />
+          <View style={styles.severityContainer}>
+            <TranslatedText style={styles.dropdownLabel} textKey="complaints.severity" fallback="Severity:" />
+            <View style={styles.severityButtonsContainer}>
+              <SeverityButton
+                level="low"
+                selected={severity === "low"}
+                onPress={() => setSeverity("low")}
+                color="#4CAF50"
+              />
+              <SeverityButton
+                level="moderate"
+                selected={severity === "moderate"}
+                onPress={() => setSeverity("moderate")}
+                color="#FF9800"
+              />
+              <SeverityButton
+                level="high"
+                selected={severity === "high"}
+                onPress={() => setSeverity("high")}
+                color="#FF5252"
+              />
+            </View>
           </View>
-        </View>
 
-        {/* Image Upload Section */}
-        <View style={styles.imageUploadContainer}>
-          <Text style={styles.imageUploadLabel}>Add Images (Max 5):</Text>
-          <View style={styles.imagePreviewContainer}>
-            {images.map((uri, index) => (
-              <View key={index} style={styles.imagePreviewWrapper}>
-                <Image source={{ uri }} style={styles.imagePreview} />
+          <View style={styles.imageUploadContainer}>
+            <TranslatedText style={styles.imageUploadLabel} textKey="complaints.addImages" fallback="Add Images (Max 5):" />
+            <View style={styles.imagePreviewContainer}>
+              {images.map((uri, index) => (
+                <View key={index} style={styles.imagePreviewWrapper}>
+                  <Image source={{ uri }} style={styles.imagePreview} />
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={() => removeImage(index)}
+                  >
+                    <TranslatedText style={styles.removeImageText} textKey="complaints.removeImage" fallback="X" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {images.length < 5 && (
                 <TouchableOpacity
-                  style={styles.removeImageButton}
-                  onPress={() => removeImage(index)}
+                  style={styles.addImageButton}
+                  onPress={pickImages}
                 >
-                  <Text style={styles.removeImageText}>X</Text>
+                  <Paperclip size={24} color={THEME.primary} />
                 </TouchableOpacity>
-              </View>
-            ))}
-            {images.length < 5 && (
-              <TouchableOpacity
-                style={styles.addImageButton}
-                onPress={pickImages}
-              >
-                <Paperclip size={24} color={THEME.primary} />
-              </TouchableOpacity>
-            )}
+              )}
+            </View>
           </View>
+
+          <TouchableOpacity
+            style={[styles.submitButton, loading && styles.disabledButton]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <TranslatedText style={styles.submitButtonText} textKey="complaints.submit" fallback="Submit Complaint" />
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.disabledButton]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>Submit Complaint</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Past Requests Section */}
-        {pastRequests.length > 0 && (
-          <View style={styles.pastRequestsContainer}>
-            <Text style={styles.pastRequestsTitle}>Your Past Requests</Text>
-            {pastRequests.map((request) => (
-              <View key={request.id} style={styles.requestCard}>
+        {/* Past Requests Section - Scrollable */}
+        <View style={styles.pastRequestsSection}>
+          <TranslatedText style={styles.pastRequestsTitle} textKey="complaints.pastRequests" fallback="Your Past Requests" />
+          <FlatList
+            data={pastRequests}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item: request }) => (
+              <View style={styles.requestCard}>
                 <View style={styles.requestHeader}>
-                  <Text style={styles.requestDate}>
-                    {new Date(request.created_at).toLocaleDateString()}
-                  </Text>
+                  <TranslatedText style={styles.requestDate} textKey="complaints.date" fallback={new Date(request.created_at).toLocaleDateString()} />
                   <StatusBadge status={request.status} />
                 </View>
-                <Text style={styles.requestText}>{request.message}</Text>
-                <Text style={styles.requestText}>
-                  Address: {request.address}
-                </Text>
-                <Text style={styles.requestSeverity}>
-                  Severity:{" "}
-                  {request.severity.charAt(0).toUpperCase() +
-                    request.severity.slice(1)}
-                </Text>
+                <TranslatedText style={styles.requestText} textKey={`request.${request.id}.message`} fallback={request.message} />
+                <TranslatedText 
+                  style={styles.requestText} 
+                  textKey="complaints.address" 
+                  fallback={`Address: ${request.address}`} 
+                />
+                <TranslatedText 
+                  style={styles.requestSeverity} 
+                  textKey={`complaints.severityLabel`}
+                  fallback={`Severity: ${request.severity.charAt(0).toUpperCase() + request.severity.slice(1)}`} 
+                />
                 {request.media && request.media.length > 0 && (
                   <View style={styles.requestImagesContainer}>
-                    <Text style={styles.requestImagesLabel}>
-                      Attached Images:
-                    </Text>
+                    <TranslatedText 
+                      style={styles.requestImagesLabel} 
+                      textKey="complaints.attachedImages" 
+                      fallback="Attached Images:" 
+                    />
                     <View style={styles.requestImagesPreview}>
                       {request.media.map((media, index) => (
                         <Image
@@ -508,24 +531,24 @@ export default function ComplaintsScreen() {
                   </View>
                 )}
               </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+            )}
+          />
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: THEME.background,
   },
-
-  container: {
-    flexGrow: 1,
+  mainContent: {
+    flex: 1,
+  },
+  formSection: {
     padding: 20,
-    backgroundColor: THEME.background,
   },
   headline: {
     fontSize: 28,
@@ -633,27 +656,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  dropdownPicker: {
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    backgroundColor: THEME.card,
+    minHeight: 50,
+    borderWidth: 1,
+  },
   dropdownContainer: {
     borderColor: '#E5E7EB',
     backgroundColor: THEME.card,
     borderRadius: 12,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
-  dropdownPicker: {
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    backgroundColor: THEME.card,
+  dropdownItemContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    padding: 10,
   },
   dropdownPickerText: {
     fontSize: 16,
     color: THEME.text.primary,
-  },
-  dropdownItemContainer: {
-    borderBottomColor: '#E5E7EB',
   },
   dropdownSelectedItem: {
     backgroundColor: '#E0F2F1',
@@ -721,8 +749,9 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
   },
-  pastRequestsContainer: {
-    marginTop: 20,
+  pastRequestsSection: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
   pastRequestsTitle: {
     fontSize: 20,

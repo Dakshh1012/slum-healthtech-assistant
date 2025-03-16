@@ -1,125 +1,188 @@
 import React, { useState } from 'react'
-import { Alert, StyleSheet, View, Text, TextInput, Pressable } from 'react-native'
+import { 
+  Alert, 
+  View, 
+  Text, 
+  TextInput, 
+  Pressable, 
+  ActivityIndicator,
+  Dimensions,
+  Image
+} from 'react-native'
 import { supabase } from '../lib/supabase'
 import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { authStyles as styles } from '../styles/auth'
+import * as Animatable from 'react-native-animatable'
+import { LinearGradient } from 'expo-linear-gradient'
+
+const { width } = Dimensions.get('window')
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [focusedInput, setFocusedInput] = useState<string | null>(null)
 
   async function signInWithEmail() {
-    setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
-    })
-
-    if (error) Alert.alert('Error', error.message)
-    else {
-      router.replace('/(tabs)')
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields')
+      return
     }
-    setLoading(false)
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) throw error
+      router.replace('/(tabs)')
+    } catch (error: any) {
+      Alert.alert('Error', error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function signInWithProvider(provider: 'google' | 'apple') {
+    try {
+      setLoading(true)
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+      })
+      if (error) throw error
+    } catch (error: any) {
+      Alert.alert('Error', error.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
-      </View>
+      <LinearGradient
+        colors={['#07A996', '#0A8185', '#1A6477']}
+        style={styles.gradientBackground}
+      />
+      
+      <Animatable.View 
+        style={[styles.decorationCircle, { top: -width * 0.4, right: -width * 0.4 }]}
+        animation="fadeIn"
+        duration={1000}
+      />
+      <Animatable.View 
+        style={[styles.decorationCircle, { bottom: -width * 0.4, left: -width * 0.4 }]}
+        animation="fadeIn"
+        duration={1000}
+      />
 
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
+      <View style={styles.content}>
+        <View style={styles.topSection}>
+          <Animatable.View 
+            style={styles.logoContainer}
+            animation="fadeIn"
+            duration={1000}
+          >
+            <Image
+              source={require('../assets/image1.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </Animatable.View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-        />
+          <Animatable.View 
+            style={styles.header} 
+            animation="fadeIn" 
+            duration={1000}
+          >
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Sign in to continue your journey</Text>
+          </Animatable.View>
+        </View>
 
-        <Pressable
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={signInWithEmail}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'Signing in...' : 'Sign In'}
-          </Text>
-        </Pressable>
+        <View style={styles.bottomSection}>
+          <Animatable.View 
+            style={styles.form}
+            animation="fadeInUp"
+            delay={200}
+            duration={1000}
+          >
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Email Address</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  focusedInput === 'email' && styles.inputFocused
+                ]}
+                placeholder="Enter your email"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                onFocus={() => setFocusedInput('email')}
+                onBlur={() => setFocusedInput(null)}
+              />
+              <Ionicons 
+                name="mail-outline" 
+                size={20} 
+                color="#666"
+                style={styles.inputIcon}
+              />
+            </View>
 
-        <Pressable onPress={() => router.push('./signup')}>
-          <Text style={styles.footerText}>
-            Don't have an account? <Text style={styles.link}>Sign Up</Text>
-          </Text>
-        </Pressable>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Password</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  focusedInput === 'password' && styles.inputFocused
+                ]}
+                placeholder="Enter your password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                onFocus={() => setFocusedInput('password')}
+                onBlur={() => setFocusedInput(null)}
+              />
+              <Pressable 
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.inputIcon}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={20} 
+                  color="#666"
+                />
+              </Pressable>
+            </View>
+
+            <Animatable.View
+              animation="fadeIn"
+              delay={400}
+            >
+              <Pressable
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={signInWithEmail}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Sign In</Text>
+                )}
+              </Pressable>
+            </Animatable.View>
+          </Animatable.View>
+
+          <Pressable onPress={() => router.push('./signup')}>
+            <Text style={styles.footerText}>
+              Don't have an account? <Text style={styles.link}>Sign Up</Text>
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   )
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#fff',
-  },
-  header: {
-    marginTop: 100,
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#07A996',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-  },
-  form: {
-    gap: 16,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 15,
-    borderRadius: 12,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: '#07A996',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footerText: {
-    textAlign: 'center',
-    marginTop: 32,
-    color: '#666',
-  },
-  link: {
-    color: '#07A996',
-    fontWeight: '600',
-  },
-}) 
+} 

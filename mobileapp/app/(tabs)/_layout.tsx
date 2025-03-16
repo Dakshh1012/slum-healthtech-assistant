@@ -54,7 +54,7 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="ai_therapist"
+        name="community"
         options={{
           title: 'Community',
           tabBarIcon: ({ color }) => <MessageCircle size={24} color={color} />,

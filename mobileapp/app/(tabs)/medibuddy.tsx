@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,8 +11,9 @@ import {
   Image,
   Modal,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+  FlatList,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   MessageCircle,
   Mic,
@@ -24,236 +25,151 @@ import {
   ChevronDown,
   Play,
   Pause,
-} from 'lucide-react-native'; // Added Play and Pause icons
-import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
-import { Audio } from 'expo-av';
-import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
-import DropDownPicker from 'react-native-dropdown-picker';
+} from "lucide-react-native"; // Added Play and Pause icons
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
+import { Audio } from "expo-av";
+import { useAuth } from "../../contexts/AuthContext";
+import DropDownPicker from "react-native-dropdown-picker";
+import { NGO } from '../../lib/types';
 
 const THEME = {
-  primary: '#00BFA6',
-  secondary: '#4C5DF4',
-  warning: '#FF9800',
-  danger: '#FF5252',
-  background: '#F7FAFA',
-  card: '#FFFFFF',
+  primary: "#00BFA6",
+  secondary: "#4C5DF4",
+  warning: "#FF9800",
+  danger: "#FF5252",
+  background: "#F7FAFA",
+  card: "#FFFFFF",
   text: {
-    primary: '#2D3142',
-    secondary: '#4F5565',
-    light: '#9BA3AF',
+    primary: "#2D3142",
+    secondary: "#4F5565",
+    light: "#9BA3AF",
   },
 };
 
+// Flask API endpoint
+const API_URL = "http://127.0.0.1:5000";
+
 interface Message {
   id: string;
-  sender: 'user' | 'assistant';
+  sender: "user" | "assistant";
   text: string;
   timestamp: Date;
   media?: {
-    type: 'image' | 'audio';
+    type: "image" | "audio";
     uri: string;
     duration?: number;
   };
 }
 
-interface ChatHistory {
-  id: string;
-  model_type: string;
-  message_content: string;
-  created_at: string;
-  media_url?: string;
-  message_type: 'text' | 'image' | 'audio';
-}
-
 const initialMessages: Message[] = [
   {
-    id: '1',
-    sender: 'assistant',
-    text: 'Hello! I\'m your MediBuddy, your personal healthcare assistant. How can I help you today?',
+    id: "1",
+    sender: "assistant",
+    text: "Hello! I'm your MediBuddy, your personal healthcare assistant. How can I help you today?",
     timestamp: new Date(),
   },
 ];
 
 export default function MediBuddyScreen() {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [showMediaOptions, setShowMediaOptions] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('medibuddy');
+  const [selectedModel, setSelectedModel] = useState("medibuddy");
   const [previewImage, setPreviewImage] = useState<string | null>(null); // State for image preview
   const [sound, setSound] = useState<Audio.Sound | null>(null); // State for audio playback
   const [isPlaying, setIsPlaying] = useState(false); // State to track if audio is playing
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<FlatList<Message>>(null);
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([
-    { label: 'MediBuddy', value: 'medibuddy' },
-    { label: 'AI Doctor', value: 'ai_doctor' }
+    { label: "MediBuddy", value: "medibuddy" },
+    { label: "ThereBuddy", value: "ai_doctor" },
   ]);
-  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+  const [recentChats, setRecentChats] = useState<Message[]>([]);
+  const [ngos, setNgos] = useState<NGO[]>([]);
 
   useEffect(() => {
-    fetchChatHistory();
+    const initialMsg = getInitialMessage(selectedModel)[0];
+    setMessages([initialMsg]);
   }, [selectedModel]);
 
-  const fetchChatHistory = async () => {
+  // Function to handle API call for therapy response
+  const getBotResponse = async (userText: string, lang = "en") => {
     try {
-      const { data, error } = await supabase
-        .from('chats')
-        .select('*')
-        .eq('user_id', user?.id)
-        .eq('model_type', selectedModel)
-        .order('created_at', { ascending: false })
-        .limit(3);
+      // Determine which endpoint to use based on selectedModel
+      const endpoint = selectedModel === "medibuddy" ? "doctor" : "therapist";
+      
+      let response;
+      
+      if (endpoint === "therapist") {
+        // Call therapist endpoint with text input
+        response = await fetch(`${API_URL}/therapist`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            text: userText, 
+            lang: lang 
+          }),
+        });
+      } else {
+        // Note: Doctor endpoint requires both audio and image files
+        // This is a simplified implementation that would need more work
+        // This would typically be called with audio recording and image
+        Alert.alert("Info", "Doctor endpoint requires audio and image files");
+        return "I need both audio and image to provide a proper medical assessment.";
+      }
 
-      if (error) throw error;
-      setChatHistory(data || []);
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Return the appropriate response field based on the endpoint
+      return endpoint === "therapist" ? data.therapist_response : data.doctor_response;
     } catch (error) {
-      console.error('Error fetching chat history:', error);
+      console.error("Error getting bot response:", error);
+      return "I'm sorry, I'm having trouble connecting to my knowledge base right now.";
     }
   };
 
   // Function to handle model selection
-  const handleModelSelection = () => {
-    Alert.alert(
-      'Select Model',
-      '',
-      [
-        { text: 'Therapist', onPress: () => setSelectedModel('Therapist') },
-        { text: 'Doctor', onPress: () => setSelectedModel('Doctor') },
-      ],
-      { cancelable: true }
-    );
+  const handleModelSelection = (value: string) => {
+    setSelectedModel(value);
   };
 
-  // Function to simulate bot response
-  const simulateBotResponse = () => {
-    setTimeout(() => {
+  // Function to get bot response
+  const simulateBotResponse = async (userText: string) => {
+    try {
+      const botResponseText = await getBotResponse(userText);
+      
       const botResponse: Message = {
         id: Date.now().toString(),
-        sender: 'assistant',
-        text: `I'm the ${selectedModel}. I've received your message.`,
+        sender: "assistant",
+        text: botResponseText,
         timestamp: new Date(),
       };
+      
       setMessages((prevMessages) => [...prevMessages, botResponse]);
+      
+      // Save this chat to recent chats (simplified)
+      const chatPreview: Message = {
+        id: Date.now().toString(),
+        sender: "assistant",
+        text: botResponseText.substring(0, 50) + (botResponseText.length > 50 ? "..." : ""),
+        timestamp: new Date(),
+      };
+      setRecentChats(prev => [chatPreview, ...prev.slice(0, 4)]); // Keep only 5 recent chats
+      
       scrollToBottom();
-    }, 1000);
-  };
-
-  // Function to upload media to Supabase storage
-  const uploadMedia = async (uri: string, type: 'image' | 'audio') => {
-    try {
-      if (!uri) {
-        throw new Error('No URI provided');
-      }
-
-      // For images, we'll read the file first
-      if (type === 'image') {
-        const fileInfo = await FileSystem.getInfoAsync(uri);
-        if (!fileInfo.exists) {
-          throw new Error('File does not exist');
-        }
-
-        // Read the file
-        const response = await fetch(uri as string);
-        if (!response.ok) {
-          throw new Error('Failed to read file');
-        }
-        
-        const blob = await response.blob();
-        if (!blob) {
-          throw new Error('Failed to create blob');
-        }
-
-        // Generate a unique filename
-        const fileName = `${Date.now()}.jpg`;
-        const filePath = `${user?.id}/${type}s/${fileName}`;
-
-        // Upload to Supabase storage
-        const { data, error } = await supabase.storage
-          .from('chat-media')
-          .upload(filePath, blob, {
-            contentType: 'image/jpeg',
-            cacheControl: '3600',
-            upsert: true
-          });
-
-        if (error) {
-          console.error('Supabase storage error:', error);
-          throw new Error(`Upload failed: ${error.message}`);
-        }
-
-        // Get the public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('chat-media')
-          .getPublicUrl(filePath);
-
-        return publicUrl;
-      }
-
-      // Handle audio uploads
-      await Audio.requestPermissionsAsync();
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      setRecording(recording);
-      setIsRecording(true);
-
-      const audioUri = recording.getURI();
-
-      if (audioUri) {
-        const newMessage: Message = {
-          id: Date.now().toString(),
-          sender: 'user',
-          text: '🎤 Voice message',
-          timestamp: new Date(),
-          media: {
-            type: 'audio',
-            uri: audioUri,
-          },
-        };
-        setMessages([...messages, newMessage]);
-        await storeMessage('🎤 Voice message', 'user', 'audio');
-        simulateBotResponse();
-      }
-
-      return audioUri;
     } catch (error) {
-      console.error('Error in uploadMedia:', error);
-      Alert.alert(
-        'Upload Error',
-        'Failed to upload media. Please check your internet connection and try again.'
-      );
-      return null;
-    }
-  };
-
-  // Function to store message in database
-  const storeMessage = async (
-    content: string,
-    senderType: 'user' | 'assistant',
-    messageType: 'text' | 'audio' | 'image',
-    mediaUrl?: string
-  ) => {
-    try {
-      const { data, error } = await supabase.from('chats').insert({
-        user_id: user?.id,
-        model_type: selectedModel,
-        sender_type: senderType,
-        message_type: messageType,
-        message_content: content,
-        media_url: mediaUrl
-      });
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Error storing message:', error);
+      console.error("Error getting bot response:", error);
+      Alert.alert("Error", "Failed to get response from the assistant");
     }
   };
 
@@ -268,29 +184,28 @@ export default function MediBuddyScreen() {
 
       if (!result.canceled && result.assets[0]) {
         setShowMediaOptions(false);
+
+        // Here we would typically upload the image and call an API
+        // For now, we'll just add it to the messages
+        const newMessage: Message = {
+          id: Date.now().toString(),
+          sender: "user",
+          text: "",
+          timestamp: new Date(),
+          media: {
+            type: "image",
+            uri: result.assets[0].uri,
+          },
+        };
         
-        // Show loading indicator or some feedback
-        const mediaUrl = await uploadMedia(result.assets[0].uri, 'image');
+        setMessages((prev) => [...prev, newMessage]);
         
-        if (mediaUrl) {
-          const newMessage: Message = {
-            id: Date.now().toString(),
-            sender: 'user',
-            text: '',
-            timestamp: new Date(),
-            media: {
-              type: 'image',
-              uri: mediaUrl,
-            },
-          };
-          setMessages(prev => [...prev, newMessage]);
-          await storeMessage('', 'user', 'image', mediaUrl);
-          simulateBotResponse();
-        }
+        // Add placeholder text for now - in a real app, you'd analyze the image
+        await simulateBotResponse("I'm examining the image you sent.");
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.");
     }
   };
 
@@ -301,11 +216,13 @@ export default function MediBuddyScreen() {
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
       });
-      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
       setRecording(recording);
       setIsRecording(true);
     } catch (err) {
-      Alert.alert('Failed to start recording');
+      Alert.alert("Failed to start recording");
     }
   };
 
@@ -317,22 +234,27 @@ export default function MediBuddyScreen() {
       const uri = recording.getURI();
 
       if (uri) {
+        // Add voice message to chat
         const newMessage: Message = {
           id: Date.now().toString(),
-          sender: 'user',
-          text: '🎤 Voice message',
+          sender: "user",
+          text: "🎤 Voice message",
           timestamp: new Date(),
           media: {
-            type: 'audio',
-            uri,
+            type: "audio",
+            uri: uri,
           },
         };
+        
         setMessages([...messages, newMessage]);
-        await storeMessage('🎤 Voice message', 'user', 'audio');
-        simulateBotResponse();
+        
+        // In a real app, you would send this audio to your backend
+        // For now, just respond with a placeholder
+        await simulateBotResponse("I've received your voice message.");
       }
     } catch (err) {
-      Alert.alert('Failed to stop recording');
+      console.error("Error stopping recording:", err);
+      Alert.alert("Failed to stop recording");
     }
 
     setRecording(null);
@@ -341,29 +263,40 @@ export default function MediBuddyScreen() {
 
   const handleSendMessage = async () => {
     if (inputText.trim()) {
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        sender: 'user',
-        text: inputText.trim(),
-        timestamp: new Date(),
-      };
-      setMessages([...messages, newMessage]);
-      setInputText('');
+      try {
+        const newMessage: Message = {
+          id: Date.now().toString(),
+          sender: "user",
+          text: inputText.trim(),
+          timestamp: new Date(),
+        };
+        setMessages([...messages, newMessage]);
+        
+        const userText = inputText.trim();
+        setInputText("");
 
-      // Store message in database
-      await storeMessage(inputText.trim(), 'user', 'text');
-      simulateBotResponse();
+        // Get bot response
+        await simulateBotResponse(userText);
+      } catch (error) {
+        console.error("Error sending message:", error);
+        Alert.alert(
+          "Error",
+          "Failed to send message. Please try again."
+        );
+      }
     }
   };
 
   const scrollToBottom = () => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -414,95 +347,63 @@ export default function MediBuddyScreen() {
         });
       }
     } catch (error) {
-      console.error('Error playing audio:', error);
-      Alert.alert('Error', 'Failed to play audio. Please try again.');
+      console.error("Error playing audio:", error);
+      Alert.alert("Error", "Failed to play audio. Please try again.");
     }
   };
 
-  // Modify the ModelSelector component
-  const ModelSelector = () => (
-    <View style={styles.modelSelectorContainer}>
-      <DropDownPicker
-        open={open}
-        value={selectedModel}
-        items={items}
-        setOpen={setOpen}
-        setValue={setSelectedModel}
-        setItems={setItems}
-        style={styles.dropdown}
-        containerStyle={styles.dropdownContainer}
-        labelStyle={styles.dropdownLabel}
-      />
-    </View>
-  );
-
-  // Add this function inside MediBuddyScreen component
-  const handlePastChatClick = (chat: ChatHistory) => {
-    // Add the selected chat message to current messages
-    const newMessage: Message = {
-      id: chat.id,
-      sender: 'user',
-      text: chat.message_content,
-      timestamp: new Date(chat.created_at),
-      ...(chat.media_url && {
-        media: {
-          type: chat.message_type as 'image' | 'audio',
-          uri: chat.media_url,
-        },
-      }),
-    };
-    setMessages([...initialMessages, newMessage]);
+  // Create a function to get initial message based on selected model
+  const getInitialMessage = (modelType: string): Message[] => {
+    if (modelType === "medibuddy") {
+      return [{
+        id: "1",
+        sender: "assistant",
+        text: "Hello! I'm your MediBuddy, your personal healthcare assistant. How can I help you today?",
+        timestamp: new Date(),
+      }];
+    } else {
+      return [{
+        id: "1",
+        sender: "assistant",
+        text: "Hi! I'm ThereBuddy, your mental health companion. I'm here to listen and support you. How are you feeling today?",
+        timestamp: new Date(),
+      }];
+    }
   };
 
-  // Update the PastChatsSection component
-  const PastChatsSection = () => (
-    <View style={styles.pastChatsSection}>
-      <Text style={styles.pastChatsTitle}>Recent Chats</Text>
-      {chatHistory.map((chat) => (
-        <TouchableOpacity
-          key={chat.id}
-          style={styles.pastChatCard}
-          onPress={() => handlePastChatClick(chat)}
-        >
-          <Text style={styles.pastChatMessage}>{chat.message_content}</Text>
-          {chat.media_url && (
-            <View style={styles.pastChatMediaIndicator}>
-              {chat.message_type === 'image' && <ImageIcon size={16} color={THEME.text.light} />}
-              {chat.message_type === 'audio' && <Mic size={16} color={THEME.text.light} />}
-            </View>
-          )}
-          <Text style={styles.pastChatTimestamp}>
-            {new Date(chat.created_at).toLocaleString()}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-
-  // Clean up sound when component unmounts
-  useEffect(() => {
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-    };
-  }, [sound]);
+  // Function to handle past chat selection
+  const handlePastChatClick = (message: Message) => {
+    // In a real app, you would fetch the full conversation
+    // For now, just start a new chat with this message as context
+    const initialMsg = getInitialMessage(selectedModel)[0];
+    setMessages([initialMsg]);
+    
+    // Add a message that references the past conversation
+    setTimeout(() => {
+      const contextMessage: Message = {
+        id: Date.now().toString(),
+        sender: "assistant",
+        text: `Continuing our previous conversation about "${message.text}"...`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, contextMessage]);
+    }, 500);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.newChatButton} 
+        <TouchableOpacity
+          style={styles.newChatButton}
           onPress={() => {
-            setMessages(initialMessages);
-            fetchChatHistory();
+            setMessages(getInitialMessage(selectedModel));
           }}
         >
           <MessageCircle size={20} color={THEME.primary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            {selectedModel === 'medibuddy' ? 'MediBuddy' : 'AI Doctor'}
+            {selectedModel === "medibuddy" ? "MediBuddy" : "ThereBuddy"}
           </Text>
         </View>
         <View style={styles.modelSelectorContainer}>
@@ -519,56 +420,81 @@ export default function MediBuddyScreen() {
           />
         </View>
       </View>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        {/* Chat Dialog */}
+
+      <View style={styles.mainContainer}>
         <View style={styles.chatCard}>
-          <ScrollView
+          <FlatList
             ref={scrollViewRef}
+            data={messages}
+            keyExtractor={(item) => item.id}
             contentContainerStyle={styles.chatContainer}
-            onContentSizeChange={scrollToBottom}
-          >
-            {messages.map((message) => (
+            onContentSizeChange={() => scrollToBottom()}
+            renderItem={({ item: message }) => (
               <View
-                key={message.id}
                 style={[
                   styles.messageBubble,
-                  message.sender === 'user' ? styles.userMessage : styles.botMessage,
+                  message.sender === "user" ? styles.userMessage : styles.botMessage,
                 ]}
               >
-                {message.media?.type === 'image' && (
-                  <TouchableOpacity onPress={() => message.media && openImagePreview(message.media.uri)}>
-                    <Image source={{ uri: message.media.uri }} style={styles.messageImage} />
+                {message.media?.type === "image" && (
+                  <TouchableOpacity
+                    onPress={() => message.media && openImagePreview(message.media.uri)}
+                  >
+                    <Image
+                      source={{ uri: message.media.uri }}
+                      style={[
+                        styles.messageImage,
+                        message.sender === "user" ? styles.userMessageImage : styles.botMessageImage
+                      ]}
+                    />
                   </TouchableOpacity>
                 )}
-                {message.media?.type === 'audio' && (
-                  <View style={styles.audioContainer}>
-                    <TouchableOpacity onPress={() => message.media && handleAudioPlayback(message.media.uri)}>
+                {message.media?.type === "audio" && (
+                  <View style={[
+                    styles.audioContainer,
+                    message.sender === "user" ? styles.userAudioContainer : styles.botAudioContainer
+                  ]}>
+                    <TouchableOpacity
+                      onPress={() => message.media && handleAudioPlayback(message.media.uri)}
+                    >
                       {isPlaying ? (
-                        <Pause size={20} color={message.sender === 'user' ? '#fff' : THEME.primary} />
+                        <Pause size={20} color={message.sender === "user" ? "#fff" : THEME.primary} />
                       ) : (
-                        <Play size={20} color={message.sender === 'user' ? '#fff' : THEME.primary} />
+                        <Play size={20} color={message.sender === "user" ? "#fff" : THEME.primary} />
                       )}
                     </TouchableOpacity>
-                    <Text style={[styles.messageText, message.sender === 'user' && styles.userMessageText]}>
+                    <Text
+                      style={[
+                        styles.messageText,
+                        message.sender === "user" ? styles.userMessageText : styles.botMessageText,
+                      ]}
+                    >
                       Voice Message
                     </Text>
                   </View>
                 )}
                 {message.text && (
-                  <Text style={[styles.messageText, message.sender === 'user' && styles.userMessageText]}>
+                  <Text
+                    style={[
+                      styles.messageText,
+                      message.sender === "user" ? styles.userMessageText : styles.botMessageText,
+                    ]}
+                  >
                     {message.text}
                   </Text>
                 )}
-                <Text style={[styles.messageTime, message.sender === 'user' && styles.userMessageTime]}>
+                <Text
+                  style={[
+                    styles.messageTime,
+                    message.sender === "user" ? styles.userMessageTime : styles.botMessageTime,
+                  ]}
+                >
                   {formatTime(message.timestamp)}
                 </Text>
               </View>
-            ))}
-          </ScrollView>
+            )}
+          />
+
           <View style={styles.inputContainer}>
             <TouchableOpacity
               style={styles.iconButton}
@@ -594,7 +520,10 @@ export default function MediBuddyScreen() {
               multiline
             />
             <TouchableOpacity
-              style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+              style={[
+                styles.sendButton,
+                !inputText.trim() && styles.sendButtonDisabled,
+              ]}
               onPress={handleSendMessage}
               disabled={!inputText.trim()}
             >
@@ -603,59 +532,93 @@ export default function MediBuddyScreen() {
           </View>
         </View>
 
-        {/* Past Chats Section */}
-        <ScrollView>
-          <PastChatsSection />
-        </ScrollView>
-        
+        {/* Recent Chats Section */}
+        <FlatList
+          data={recentChats}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={() => (
+            <Text style={styles.pastChatsTitle}>Recent Chats</Text>
+          )}
+          renderItem={({ item: chat }) => (
+            <TouchableOpacity
+              style={styles.pastChatCard}
+              onPress={() => handlePastChatClick(chat)}
+            >
+              <Text style={styles.pastChatTimestamp}>
+                {chat.timestamp.toLocaleDateString()}
+              </Text>
+              <Text style={styles.pastChatMessage} numberOfLines={2}>
+                {chat.text}
+              </Text>
+              {chat.media && (
+                <View style={styles.pastChatMediaIndicator}>
+                  {chat.media.type === "image" && (
+                    <ImageIcon size={16} color={THEME.text.light} />
+                  )}
+                  {chat.media.type === "audio" && (
+                    <Mic size={16} color={THEME.text.light} />
+                  )}
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+          style={styles.pastChatsSection}
+        />
+      </View>
 
-        {/* Media Options Modal */}
-        <Modal
-          visible={showMediaOptions}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowMediaOptions(false)}
+      {/* Media Options Modal */}
+      <Modal
+        visible={showMediaOptions}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowMediaOptions(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          onPress={() => setShowMediaOptions(false)}
         >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            onPress={() => setShowMediaOptions(false)}
-          >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Add Media</Text>
-                <TouchableOpacity
-                  onPress={() => setShowMediaOptions(false)}
-                  style={styles.closeButton}
-                >
-                  <X size={24} color={THEME.text.primary} />
-                </TouchableOpacity>
-              </View>
-              <TouchableOpacity style={styles.modalOption} onPress={pickImage}>
-                <ImageIcon size={24} color={THEME.primary} />
-                <Text style={styles.modalOptionText}>Choose from Gallery</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalOption}>
-                <Camera size={24} color={THEME.primary} />
-                <Text style={styles.modalOptionText}>Take Photo</Text>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Media</Text>
+              <TouchableOpacity
+                onPress={() => setShowMediaOptions(false)}
+                style={styles.closeButton}
+              >
+                <X size={24} color={THEME.text.primary} />
               </TouchableOpacity>
             </View>
-          </TouchableOpacity>
-        </Modal>
-
-        {/* Image Preview Modal */}
-        <Modal visible={!!previewImage} transparent onRequestClose={closeImagePreview}>
-          <View style={styles.imagePreviewOverlay}>
-            <TouchableOpacity style={styles.closePreviewButton} onPress={closeImagePreview}>
-              <X size={24} color="#fff" />
+            <TouchableOpacity style={styles.modalOption} onPress={pickImage}>
+              <ImageIcon size={24} color={THEME.primary} />
+              <Text style={styles.modalOptionText}>Choose from Gallery</Text>
             </TouchableOpacity>
-            <Image
-              source={{ uri: previewImage || '' }}
-              style={styles.fullScreenImage}
-              resizeMode="contain"
-            />
+            <TouchableOpacity style={styles.modalOption}>
+              <Camera size={24} color={THEME.primary} />
+              <Text style={styles.modalOptionText}>Take Photo</Text>
+            </TouchableOpacity>
           </View>
-        </Modal>
-      </KeyboardAvoidingView>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Image Preview Modal */}
+      <Modal
+        visible={!!previewImage}
+        transparent
+        onRequestClose={closeImagePreview}
+      >
+        <View style={styles.imagePreviewOverlay}>
+          <TouchableOpacity
+            style={styles.closePreviewButton}
+            onPress={closeImagePreview}
+          >
+            <X size={24} color="#fff" />
+          </TouchableOpacity>
+          <Image
+            source={{ uri: previewImage || "" }}
+            style={styles.fullScreenImage}
+            resizeMode="contain"
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -668,19 +631,19 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: THEME.card,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: "rgba(0,0,0,0.1)",
     height: 60,
   },
   headerTitleContainer: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
     color: THEME.text.primary,
   },
   newChatButton: {
@@ -688,15 +651,18 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: THEME.background,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  mainContainer: {
+    flex: 1,
   },
   chatCard: {
     flex: 1,
     margin: 20,
     borderRadius: 20,
     backgroundColor: THEME.card,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -717,11 +683,13 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     backgroundColor: THEME.primary,
     borderBottomRightRadius: 4,
+    marginLeft: '20%',
   },
   botMessage: {
     alignSelf: 'flex-start',
     backgroundColor: THEME.card,
     borderBottomLeftRadius: 4,
+    marginRight: '20%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -736,14 +704,19 @@ const styles = StyleSheet.create({
   userMessageText: {
     color: '#fff',
   },
+  botMessageText: {
+    color: THEME.text.primary,
+  },
   messageTime: {
     fontSize: 11,
-    color: THEME.text.light,
     marginTop: 4,
     alignSelf: 'flex-end',
   },
   userMessageTime: {
     color: 'rgba(255,255,255,0.8)',
+  },
+  botMessageTime: {
+    color: THEME.text.light,
   },
   messageImage: {
     width: 200,
@@ -751,18 +724,34 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 8,
   },
+  userMessageImage: {
+    alignSelf: 'flex-end',
+  },
+  botMessageImage: {
+    alignSelf: 'flex-start',
+  },
   audioContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  inputContainer: {
+  userAudioContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  botAudioContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     backgroundColor: THEME.card,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: "rgba(0,0,0,0.1)",
   },
   iconButton: {
     padding: 8,
@@ -783,16 +772,16 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: THEME.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   sendButtonDisabled: {
     backgroundColor: THEME.text.light,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: THEME.card,
@@ -801,22 +790,22 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: THEME.text.primary,
   },
   closeButton: {
     padding: 4,
   },
   modalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     borderRadius: 12,
     backgroundColor: THEME.background,
@@ -829,27 +818,26 @@ const styles = StyleSheet.create({
   },
   imagePreviewOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
   },
   closePreviewButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 40,
     right: 20,
     zIndex: 1,
   },
   fullScreenImage: {
     flex: 1,
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   pastChatsSection: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   pastChatsTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: THEME.text.primary,
     marginBottom: 10,
   },
@@ -858,7 +846,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     marginBottom: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -880,12 +868,12 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     backgroundColor: THEME.card,
-    borderColor: 'rgba(0,0,0,0.1)',
+    borderColor: "rgba(0,0,0,0.1)",
     minHeight: 30,
     height: 40,
   },
   dropdownContainer: {
-    width: '100%',
+    width: "100%",
   },
   dropdownLabel: {
     color: THEME.text.primary,
@@ -893,8 +881,8 @@ const styles = StyleSheet.create({
   },
   pastChatMediaIndicator: {
     marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
 });
