@@ -412,6 +412,97 @@ const LocationMap = ({ location, nearbyLocations, errorMsg }: { location: Locati
     </View>
   );
 };
+
+const AlertMap = ({ location }: { location: LocationData | null }) => {
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  let mapHtml = "";
+  if (location) {
+    const { latitude, longitude } = location;
+
+    // Sample heatwave data points (replace with real API data)
+    const heatwavePoints = Array.from({ length: 1000 }, () => {
+      const latOffset = (Math.random() - 0.1) * 1; // Random offset within ±0.05 degrees
+      const lngOffset = (Math.random() - 0.1) * 1;
+      const temp = Math.random() * 10 + 30; // Random temperature between 30 and 40 degrees
+      return { lat: latitude + latOffset, lng: longitude + lngOffset, temp };
+    });
+
+    mapHtml = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    <style>
+    html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+    #map { height: 100%; width: 100%; position: absolute; top: 0; left: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+    window.onload = function() {
+      try {
+      const map = L.map('map').setView([${latitude}, ${longitude}], 10);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Heatmap Data (lat, lng, intensity)
+      const heatData = ${JSON.stringify(heatwavePoints.map(point => [point.lat, point.lng, point.temp / 40]))};
+
+      // Heatmap Layer
+      L.heatLayer(heatData, {
+        radius: 25,
+        blur: 15,
+        maxZoom: 11,
+        gradient: {
+        0.4: 'blue',   // Cool areas
+        0.6: 'yellow', // Warm areas
+        0.8: 'orange', // Hot areas
+        1.0: 'red'     // Extreme heat
+        }
+      }).addTo(map);
+
+      setTimeout(() => { map.invalidateSize(); }, 300);
+      } catch (error) {
+      document.body.innerHTML = '<div style="padding: 20px; color: red;">Error loading map: ' + error.message + '</div>';
+      }
+    };
+    </script>
+  </body>
+  </html>
+    `;
+
+    if (isLoading) setIsLoading(false);
+  }
+
+  return isLoading ? (
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <ActivityIndicator size="large" color={THEME.primary} />
+      <TranslatedText textKey="Loading heatmap..." />
+    </View>
+  ) : (
+    <View style={styles.mapContainer}>
+      <WebView
+        source={{ html: mapHtml }}
+        style={{ width: '100%', height: 250 }}
+        originWhitelist={['*']}
+        scrollEnabled={false}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        onError={(syntheticEvent) => {
+          const { nativeEvent } = syntheticEvent;
+          console.error('WebView error:', nativeEvent.description);
+        }}
+        onLoadEnd={() => console.log('WebView loaded')}
+      />
+    </View>
+  );
+};
 // ProfileAvatar Component
 const ProfileAvatar = () => {
   const router = useRouter();
@@ -622,6 +713,20 @@ const getAqiMessage = (aqi: number) => {
               location={location} 
               nearbyLocations={nearbyLocations}
               errorMsg={errorMsg} />
+            )}
+          </View>
+        </View>
+        <View style={styles.mapWrapper}>
+          <View style={styles.mapCard}>
+            <View style={styles.mapHeader}>
+              <MapIcon size={22} color={THEME.primary} />
+              <TranslatedText textKey="Alert Map" style={styles.mapTitle} />
+            </View>
+            {errorMsg ? (
+              <TranslatedText textKey={errorMsg} style={styles.errorText} />
+            ) : (
+              <AlertMap 
+              location={location}  />
             )}
           </View>
         </View>
