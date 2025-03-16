@@ -1,6 +1,6 @@
 import React from 'react';
 import { Stack } from 'expo-router';
-import { TranslationProvider } from '@/context/TranslationContext';
+import { TranslationProvider } from '@/contexts/TranslationContext';
 import './globals.css'
 import { AuthProvider } from '../contexts/AuthContext';
 

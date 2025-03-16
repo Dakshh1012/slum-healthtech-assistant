@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { Text, TextProps } from 'react-native';
-import TranslationContext from '@/context/TranslationContext';
+import TranslationContext from '@/contexts/TranslationContext';
 
 interface TranslatedTextProps extends TextProps {
   textKey: string;

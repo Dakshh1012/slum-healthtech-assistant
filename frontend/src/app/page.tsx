@@ -11,7 +11,7 @@ export default function Home() {
     <div className="min-h-screen bg-white overflow-hidden font-inter">
       <Navbar />
       <Hero />
-      <Companies />
+      {/* <Companies /> */}
       <Features />
       {/* <Testimonials /> */}
       <Footer />

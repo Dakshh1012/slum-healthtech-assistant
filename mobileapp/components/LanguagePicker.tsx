@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { View, TouchableOpacity, Modal, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons'; // Using Globe icon for language
-import TranslationContext from '../context/TranslationContext';
+import TranslationContext from '../contexts/TranslationContext';
 
 const THEME = {
   primary: '#00BFA6',

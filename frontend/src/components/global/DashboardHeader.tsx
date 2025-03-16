@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Clock, CheckCircle, XCircle, Plus } from 'lucide-react';
@@ -27,11 +26,12 @@ const FilterButton = ({ active, onClick, children, className }: FilterButtonProp
 
 interface DashboardHeaderProps {
   filter: string;
-  onFilterChange: (filter: string) => void;
+  onFilterChange: (value: string) => void;
   requestsCount: number;
+  onNotify: () => void;
 }
 
-export const DashboardHeader = ({ filter, onFilterChange, requestsCount }: DashboardHeaderProps) => {
+export const DashboardHeader = ({ filter, onFilterChange, requestsCount, onNotify }: DashboardHeaderProps) => {
   const filters = [
     { id: 'all', label: 'All Requests', icon: null },
     { id: 'pending', label: 'Pending', icon: <Clock className="w-4 h-4" /> },
@@ -52,13 +52,7 @@ export const DashboardHeader = ({ filter, onFilterChange, requestsCount }: Dashb
               Manage and respond to assistance requests from communities in need
             </p>
           </div>
-          
-          <div className="flex items-center">
-            <Button variant="default" className="mr-3 bg-white text-primary hover:bg-white/90">
-              <Plus className="w-4 h-4 mr-2" />
-              New Request
-            </Button>
-          </div>
+      
         </div>
 
         <div className="mt-8 flex overflow-x-auto pb-1">
@@ -80,6 +74,14 @@ export const DashboardHeader = ({ filter, onFilterChange, requestsCount }: Dashb
                 )}
               </FilterButton>
             ))}
+          </div>
+        </div>
+
+        <div className="mt-8 flex overflow-x-auto pb-1">
+          <div className="flex gap-2 md:gap-3">
+            <Button onClick={onNotify}>
+              Create Notification
+            </Button>
           </div>
         </div>
       </div>

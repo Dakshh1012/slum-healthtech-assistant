@@ -4,9 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Bell, TriangleAlert as AlertTriangle, Shield, Wind, Map as MapIcon, Globe } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
-import { useRouter } from 'expo-router';
+import { router, useRouter } from 'expo-router';
 import TranslatedText from '@/components/TranslatedText';
 import LanguagePicker from '@/components/LanguagePicker';
+import { supabase } from '@/lib/supabase';
 
 // Theme Configuration
 const THEME = {
@@ -457,6 +458,8 @@ export default function HomeScreen() {
     year: 'numeric',
   });
 
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -475,6 +478,47 @@ export default function HomeScreen() {
       const aqiData = await fetchAqiData(location.coords.latitude, location.coords.longitude);
       setAqiData(aqiData);
     })();
+  }, []);
+
+  useEffect(() => {
+    const checkNewNotifications = async () => {
+      try {
+        const { data: notifications, error } = await supabase
+          .from('notifications')
+          .select('created_at')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+
+        // Check if there's a new notification in the last hour
+        if (notifications && notifications.length > 0) {
+          const lastNotification = new Date(notifications[0].created_at);
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+          setHasUnreadNotifications(lastNotification > oneHourAgo);
+        }
+      } catch (error) {
+        console.error('Error checking notifications:', error);
+      }
+    };
+
+    checkNewNotifications();
+    
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (_payload: { new: any }) => {
+          setHasUnreadNotifications(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchAqiData = async (latitude: number, longitude: number) => {
@@ -529,7 +573,16 @@ const getAqiMessage = (aqi: number) => {
         </View>
         <View style={styles.headerIcons}>
           <LanguagePicker />
-          <Bell size={24} color={THEME.text.primary} />
+          <TouchableOpacity 
+            onPress={() => {
+              setHasUnreadNotifications(false);
+              router.push('./notifications');
+            }}
+            style={styles.notificationButton}
+          >
+            <Bell size={24} color={THEME.text.primary} />
+            <View style={styles.notificationBadge} />
+          </TouchableOpacity>
           <ProfileAvatar />
         </View>
       </View>
@@ -633,6 +686,7 @@ const styles = StyleSheet.create({
   },
   headerIcons: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 16,
   },
   icon: {
@@ -872,6 +926,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: THEME.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatar: {
     width: '100%',
@@ -888,5 +944,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: THEME.primary,
+  },
+  notificationButton: {
+    position: 'relative',
+    height: 36,
+    width: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: THEME.danger,
   },
 });
