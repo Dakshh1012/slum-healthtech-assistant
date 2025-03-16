@@ -47,8 +47,12 @@ const THEME = {
   },
 };
 
-// Flask API endpoint
-const API_URL = "http://127.0.0.1:5000";
+// Update the API URL based on platform
+const API_URL = Platform.select({
+  ios: "http://localhost:5000",
+  android: "http://10.0.2.2:5000", // Special IP for Android emulator
+  default: "http://localhost:5000",
+});
 
 interface Message {
   id: string;
@@ -62,9 +66,40 @@ interface Message {
   };
 }
 
+interface Doctor {
+  name: string;
+  specialization: string;
+  fees: number;
+  location: string;
+}
+
+interface BotResponse {
+  doctor_response?: string;
+  doctor_response_en?: string;
+  voice_output?: string;
+  recommended_doctors?: Doctor[];
+  transcription?: string;
+  user_input?: string;
+}
+
+interface FormDataValue {
+  uri: string;
+  name: string;
+  type: string;
+}
+
+const generateUniqueId = (() => {
+  let counter = 0;
+  return () => {
+    const timestamp = Date.now();
+    counter = (counter + 1) % 1000; // Reset counter after 999
+    return `msg_${timestamp}_${counter}`;
+  };
+})();
+
 const initialMessages: Message[] = [
   {
-    id: "1",
+    id: generateUniqueId(),
     sender: "assistant",
     text: "Hello! I'm your MediBuddy, your personal healthcare assistant. How can I help you today?",
     timestamp: new Date(),
@@ -86,7 +121,7 @@ export default function MediBuddyScreen() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([
     { label: "MediBuddy", value: "medibuddy" },
-    { label: "ThereBuddy", value: "ai_doctor" },
+    { label: "TheraBuddy", value: "ai_doctor" },
   ]);
   const [recentChats, setRecentChats] = useState<Message[]>([]);
   const [ngos, setNgos] = useState<NGO[]>([]);
@@ -95,6 +130,37 @@ export default function MediBuddyScreen() {
     const initialMsg = getInitialMessage(selectedModel)[0];
     setMessages([initialMsg]);
   }, [selectedModel]);
+
+  useEffect(() => {
+    // Set up audio mode when component mounts
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          interruptionModeIOS: 1,  // DoNotMix = 1
+          interruptionModeAndroid: 1,  // DoNotMix = 1
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+      } catch (error) {
+        console.error("Error setting up audio:", error);
+      }
+    };
+
+    setupAudio();
+
+    // Cleanup function
+    return () => {
+      if (sound instanceof Audio.Sound) {  // Type check
+        sound.unloadAsync();
+      }
+      if (recording) {
+        recording.stopAndUnloadAsync();
+      }
+    };
+  }, []);
 
   // Function to handle API call for therapy response
   const getBotResponse = async (userText: string, lang = "en") => {
@@ -149,7 +215,7 @@ export default function MediBuddyScreen() {
       const botResponseText = await getBotResponse(userText);
       
       const botResponse: Message = {
-        id: Date.now().toString(),
+        id: generateUniqueId(),
         sender: "assistant",
         text: botResponseText,
         timestamp: new Date(),
@@ -159,7 +225,7 @@ export default function MediBuddyScreen() {
       
       // Save this chat to recent chats (simplified)
       const chatPreview: Message = {
-        id: Date.now().toString(),
+        id: generateUniqueId(),
         sender: "assistant",
         text: botResponseText.substring(0, 50) + (botResponseText.length > 50 ? "..." : ""),
         timestamp: new Date(),
@@ -176,7 +242,7 @@ export default function MediBuddyScreen() {
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images, // This will be deprecated but still works
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 0.8,
         base64: false,
@@ -185,10 +251,17 @@ export default function MediBuddyScreen() {
       if (!result.canceled && result.assets[0]) {
         setShowMediaOptions(false);
 
-        // Here we would typically upload the image and call an API
-        // For now, we'll just add it to the messages
-        const newMessage: Message = {
-          id: Date.now().toString(),
+        // Create form data
+        const formData = new FormData();
+        formData.append('image', {
+          uri: result.assets[0].uri,
+          type: 'image/jpeg',
+          name: 'image.jpg',
+        } as unknown as Blob);
+
+        // Add user message with image
+        const userMessage: Message = {
+          id: generateUniqueId(),
           sender: "user",
           text: "",
           timestamp: new Date(),
@@ -197,32 +270,72 @@ export default function MediBuddyScreen() {
             uri: result.assets[0].uri,
           },
         };
-        
-        setMessages((prev) => [...prev, newMessage]);
-        
-        // Add placeholder text for now - in a real app, you'd analyze the image
-        await simulateBotResponse("I'm examining the image you sent.");
+        setMessages(prev => [...prev, userMessage]);
+
+        // Make API call
+        const response = await fetch(`${API_URL}/doctor_image`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data: BotResponse = await response.json();
+
+        // Add bot response
+        const botMessage: Message = {
+          id: generateUniqueId(),
+          sender: "assistant",
+          text: data.doctor_response || "",
+          timestamp: new Date(),
+          media: data.voice_output ? {
+            type: "audio",
+            uri: data.voice_output
+          } : undefined
+        };
+        setMessages(prev => [...prev, botMessage]);
+
+        // Add recommended doctors message
+        if (data.recommended_doctors && Array.isArray(data.recommended_doctors) && data.recommended_doctors.length > 0) {
+          const uniqueDoctors = [...new Map(data.recommended_doctors.map((doc: Doctor) => 
+            [doc.name, doc]
+          )).values()] as Doctor[];
+
+          const doctorsMessage: Message = {
+            id: generateUniqueId(),
+            sender: "assistant",
+            text: `Recommended Doctors:\n${uniqueDoctors.map((doc) => 
+              `• ${doc.name} (${doc.specialization})\n  Location: ${doc.location}\n  Fees: ₹${doc.fees}`
+            ).join('\n\n')}`,
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, doctorsMessage]);
+        }
+
+        scrollToBottom();
       }
     } catch (error) {
       console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to pick image. Please try again.");
+      Alert.alert("Error", "Failed to process image. Please try again.");
     }
   };
 
   const startRecording = async () => {
     try {
-      await Audio.requestPermissionsAsync();
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-      const { recording } = await Audio.Recording.createAsync(
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission required', 'Please grant microphone permission to record audio.');
+        return;
+      }
+
+      // Create recording instance with high quality preset
+      const { recording: newRecording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
-      setRecording(recording);
+
+      setRecording(newRecording);
       setIsRecording(true);
     } catch (err) {
-      Alert.alert("Failed to start recording");
+      console.error('Failed to start recording:', err);
+      Alert.alert('Error', 'Failed to start recording. Please try again.');
     }
   };
 
@@ -230,59 +343,196 @@ export default function MediBuddyScreen() {
     if (!recording) return;
 
     try {
+      setIsRecording(false);
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
+      setRecording(null);
 
-      if (uri) {
-        // Add voice message to chat
-        const newMessage: Message = {
-          id: Date.now().toString(),
-          sender: "user",
-          text: "🎤 Voice message",
-          timestamp: new Date(),
-          media: {
-            type: "audio",
-            uri: uri,
-          },
-        };
-        
-        setMessages([...messages, newMessage]);
-        
-        // In a real app, you would send this audio to your backend
-        // For now, just respond with a placeholder
-        await simulateBotResponse("I've received your voice message.");
+      if (!uri) {
+        throw new Error('No recording URI available');
       }
-    } catch (err) {
-      console.error("Error stopping recording:", err);
-      Alert.alert("Failed to stop recording");
-    }
 
-    setRecording(null);
-    setIsRecording(false);
+      // Verify the audio file exists and has content
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      if (!fileInfo.exists || fileInfo.size === 0) {
+        throw new Error('Recording file is empty or does not exist');
+      }
+
+      // Create form data
+      const formData = new FormData();
+      formData.append('audio', {
+        uri: uri,
+        type: 'audio/mp4', // Change back to mp4 since that's what expo-av uses
+        name: 'recording.m4a',
+      } as unknown as Blob);
+
+      // Add user voice message
+      const userMessage: Message = {
+        id: generateUniqueId(),
+        sender: "user",
+        text: "🎤 Voice message",
+        timestamp: new Date(),
+        media: {
+          type: "audio",
+          uri: uri,
+        },
+      };
+      setMessages(prev => [...prev, userMessage]);
+
+      // Make API call
+      console.log('Sending audio to:', `${API_URL}/doctor_audio`);
+      const response = await fetch(`${API_URL}/doctor_audio`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server response:', response.status, errorText);
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data: BotResponse = await response.json();
+      console.log('Received response:', data);
+
+      // Add transcription message if available
+      if (data.transcription) {
+        const transcriptionMessage: Message = {
+          id: generateUniqueId(),
+          sender: "user",
+          text: `Transcription: ${data.transcription}`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, transcriptionMessage]);
+      }
+
+      // Add bot response
+      const botMessage: Message = {
+        id: generateUniqueId(),
+        sender: "assistant",
+        text: data.doctor_response || "",
+        timestamp: new Date(),
+        media: data.voice_output ? {
+          type: "audio",
+          uri: data.voice_output
+        } : undefined
+      };
+      setMessages(prev => [...prev, botMessage]);
+
+      // Add recommended doctors message
+      if (data.recommended_doctors && Array.isArray(data.recommended_doctors) && data.recommended_doctors.length > 0) {
+        const uniqueDoctors = [...new Map(data.recommended_doctors.map((doc: Doctor) => 
+          [doc.name, doc]
+        )).values()] as Doctor[];
+
+        const doctorsMessage: Message = {
+          id: generateUniqueId(),
+          sender: "assistant",
+          text: `Recommended Doctors:\n${uniqueDoctors.map((doc) => 
+            `• ${doc.name} (${doc.specialization})\n  Location: ${doc.location}\n  Fees: ₹${doc.fees}`
+          ).join('\n\n')}`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, doctorsMessage]);
+      }
+
+      scrollToBottom();
+    } catch (error) {
+      console.error("Error processing audio:", error);
+      Alert.alert("Error", "Failed to process audio. Please try again.");
+    }
   };
 
   const handleSendMessage = async () => {
     if (inputText.trim()) {
       try {
-        const newMessage: Message = {
-          id: Date.now().toString(),
+        // Add user message to chat
+        const userMessage: Message = {
+          id: generateUniqueId(),
           sender: "user",
           text: inputText.trim(),
           timestamp: new Date(),
         };
-        setMessages([...messages, newMessage]);
+        setMessages(prev => [...prev, userMessage]);
         
-        const userText = inputText.trim();
+        // Clear input text immediately to improve UX
         setInputText("");
 
-        // Get bot response
-        await simulateBotResponse(userText);
+        const endpoint = selectedModel === "medibuddy" ? "doctor_text" : "therapist";
+        const url = `${API_URL}/${endpoint}`;
+        
+        console.log('Sending request to:', url);
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({ 
+            text: userMessage.text,
+            lang: 'en' // Add language parameter if needed
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Server response:', response.status, errorText);
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Received response:', data);
+
+        // Add bot response to chat
+        const botMessage: Message = {
+          id: generateUniqueId(),
+          sender: "assistant",
+          text: selectedModel === "medibuddy" ? data.doctor_response : data.therapist_response,
+          timestamp: new Date(),
+          media: data.voice_output ? {
+            type: "audio",
+            uri: data.voice_output
+          } : undefined
+        };
+        setMessages(prev => [...prev, botMessage]);
+
+        // Add recommended doctors message if available
+        if (data.recommended_doctors && Array.isArray(data.recommended_doctors) && data.recommended_doctors.length > 0) {
+          const uniqueDoctors = [...new Map(data.recommended_doctors.map((doc: Doctor) => 
+            [doc.name, doc]
+          )).values()] as Doctor[];
+
+          const doctorsMessage: Message = {
+            id: generateUniqueId(),
+            sender: "assistant",
+            text: `Recommended Doctors:\n${uniqueDoctors.map((doc) => 
+              `• ${doc.name} (${doc.specialization})\n  Location: ${doc.location}\n  Fees: ₹${doc.fees}`
+            ).join('\n\n')}`,
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, doctorsMessage]);
+        }
+
+        scrollToBottom();
       } catch (error) {
         console.error("Error sending message:", error);
+        
+        // More detailed error message
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         Alert.alert(
-          "Error",
-          "Failed to send message. Please try again."
+          "Error", 
+          `Failed to send message: ${errorMessage}\nPlease check your network connection and try again.`
         );
+        
+        // Add error message to chat
+        const errorChatMessage: Message = {
+          id: generateUniqueId(),
+          sender: "assistant",
+          text: "Sorry, I encountered an error. Please check your network connection and try again.",
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, errorChatMessage]);
       }
     }
   };
@@ -314,7 +564,7 @@ export default function MediBuddyScreen() {
   const handleAudioPlayback = async (uri: string) => {
     try {
       if (sound) {
-        // If sound is already loaded
+        // If the same sound is playing, toggle play/pause
         if (isPlaying) {
           await sound.pauseAsync();
           setIsPlaying(false);
@@ -323,21 +573,33 @@ export default function MediBuddyScreen() {
           setIsPlaying(true);
         }
       } else {
-        // Load and play new sound
+        // Unload any previous sound
+        // if (sound) {
+        //   await sound.unloadAsync();
+        // }
+
+        console.log('Loading audio from:', uri);
         const { sound: newSound } = await Audio.Sound.createAsync(
           { uri },
           { shouldPlay: true },
           (status) => {
-            if (status.isLoaded && status.didJustFinish) {
+            if (!status.isLoaded) {
+              console.log('Error loading sound:', status);
+              return;
+            }
+            console.log('Sound status:', status);
+            if (status.didJustFinish) {
               setIsPlaying(false);
               setSound(null);
             }
-          }
+          },
+          true
         );
+
         setSound(newSound);
         setIsPlaying(true);
 
-        // Unload sound when finished
+        // Handle playback completion
         newSound.setOnPlaybackStatusUpdate((status) => {
           if (status.isLoaded && status.didJustFinish) {
             setIsPlaying(false);
@@ -356,14 +618,14 @@ export default function MediBuddyScreen() {
   const getInitialMessage = (modelType: string): Message[] => {
     if (modelType === "medibuddy") {
       return [{
-        id: "1",
+        id: generateUniqueId(),
         sender: "assistant",
         text: "Hello! I'm your MediBuddy, your personal healthcare assistant. How can I help you today?",
         timestamp: new Date(),
       }];
     } else {
       return [{
-        id: "1",
+        id: generateUniqueId(),
         sender: "assistant",
         text: "Hi! I'm ThereBuddy, your mental health companion. I'm here to listen and support you. How are you feeling today?",
         timestamp: new Date(),
@@ -381,7 +643,7 @@ export default function MediBuddyScreen() {
     // Add a message that references the past conversation
     setTimeout(() => {
       const contextMessage: Message = {
-        id: Date.now().toString(),
+        id: generateUniqueId(),
         sender: "assistant",
         text: `Continuing our previous conversation about "${message.text}"...`,
         timestamp: new Date(),

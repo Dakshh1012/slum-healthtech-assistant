@@ -153,12 +153,6 @@ export default function SignUpScreen() {
                 onFocus={() => setFocusedInput('name')}
                 onBlur={() => setFocusedInput(null)}
               />
-              <Ionicons 
-                name="person-outline" 
-                size={20} 
-                color="#666"
-                style={styles.inputIcon}
-              />
             </View>
 
             <View style={styles.inputContainer}>
@@ -175,12 +169,6 @@ export default function SignUpScreen() {
                 keyboardType="email-address"
                 onFocus={() => setFocusedInput('email')}
                 onBlur={() => setFocusedInput(null)}
-              />
-              <Ionicons 
-                name="mail-outline" 
-                size={20} 
-                color="#666"
-                style={styles.inputIcon}
               />
             </View>
 
@@ -204,11 +192,6 @@ export default function SignUpScreen() {
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.inputIcon}
                 >
-                  <Ionicons 
-                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                    size={20} 
-                    color="#666"
-                  />
                 </Pressable>
               </View>
               

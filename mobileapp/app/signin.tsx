@@ -123,12 +123,6 @@ export default function SignInScreen() {
                 onFocus={() => setFocusedInput('email')}
                 onBlur={() => setFocusedInput(null)}
               />
-              <Ionicons 
-                name="mail-outline" 
-                size={20} 
-                color="#666"
-                style={styles.inputIcon}
-              />
             </View>
 
             <View style={styles.inputContainer}>
@@ -150,11 +144,6 @@ export default function SignInScreen() {
                 onPress={() => setShowPassword(!showPassword)}
                 style={styles.inputIcon}
               >
-                <Ionicons 
-                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                  size={20} 
-                  color="#666"
-                />
               </Pressable>
             </View>
 

@@ -17,7 +17,13 @@ app = Flask(__name__)
 from recommended_doctor import recommend_doctors
 
 # Initialize CORS
-CORS(app)
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 # Set up Google Gemini API (replace with your API key)
 GENAI_API_KEY = "AIzaSyDUn1z4zMMGxBjcjjsucOBr1YyARguzkSg"  # Get from Google AI Studio

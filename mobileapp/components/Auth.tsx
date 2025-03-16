@@ -1,26 +1,23 @@
 import React from "react";
-import { StyleSheet, View, Text, Pressable } from "react-native";
+import { StyleSheet, View, Text, Pressable, TouchableOpacity } from "react-native";
 import { router } from "expo-router";
 
 export default function Auth() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.welcomeText}>Welcome to HealthCare</Text>
-      <Text style={styles.subText}>Your health journey begins here</Text>
-      
-      <Pressable
-        style={[styles.button, styles.signInButton]}
+    <View className="flex-row space-x-4">
+      <TouchableOpacity 
+        className="flex-1 bg-white h-14 rounded-full items-center justify-center"
         onPress={() => router.push("/signin")}
       >
-        <Text style={styles.buttonText}>Sign In</Text>
-      </Pressable>
+        <Text className="text-green-600 font-semibold text-lg">Sign In</Text>
+      </TouchableOpacity>
 
-      <Pressable
-        style={[styles.button, styles.signUpButton]}
+      <TouchableOpacity 
+        className="flex-1 bg-green-700 h-14 rounded-full items-center justify-center"
         onPress={() => router.push("/signup")}
       >
-        <Text style={[styles.buttonText, styles.signUpText]}>Create Account</Text>
-      </Pressable>
+        <Text className="text-white font-semibold text-lg">Sign Up</Text>
+      </TouchableOpacity>
     </View>
   );
 }
