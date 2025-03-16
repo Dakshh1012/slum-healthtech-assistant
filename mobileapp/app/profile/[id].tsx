@@ -115,7 +115,7 @@ export default function ProfileScreen() {
     name: 'Rahul Sharma',
     email: 'rahul.sharma@example.com',
     phone: '+91 98765 43210',
-    address: '123 Green Park, New Delhi, India',
+    address: 'Nerul, Navi Mumbai, India',
     coins: 750,
     profileImage: 'https://randomuser.me/api/portraits/men/32.jpg',
   };
