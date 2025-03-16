@@ -50,8 +50,8 @@ const THEME = {
 // Update the API URL based on platform
 const API_URL = Platform.select({
   ios: "http://localhost:5000",
-  android: "http://10.0.2.2:5000", // Special IP for Android emulator
-  default: "http://localhost:5000",
+  android: "https://7169-136-232-248-186.ngrok-free.app", // Special IP for Android emulator
+  default: "https://7169-136-232-248-186.ngrok-free.app",
 });
 
 interface Message {
