@@ -29,7 +29,6 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import { Audio } from "expo-av";
-import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import DropDownPicker from "react-native-dropdown-picker";
 import { NGO } from '../../lib/types';
@@ -48,6 +47,9 @@ const THEME = {
   },
 };
 
+// Flask API endpoint
+const API_URL = "http://127.0.0.1:5000";
+
 interface Message {
   id: string;
   sender: "user" | "assistant";
@@ -58,17 +60,6 @@ interface Message {
     uri: string;
     duration?: number;
   };
-}
-
-interface ChatHistory {
-  id: string;
-  chat_id: string;
-  sender_type: "user" | "assistant";
-  message_type: "text" | "image" | "audio";
-  message_content: string;
-  created_at: string;
-  media_url?: string;
-  chat_created_at: string;
 }
 
 const initialMessages: Message[] = [
@@ -97,227 +88,88 @@ export default function MediBuddyScreen() {
     { label: "MediBuddy", value: "medibuddy" },
     { label: "ThereBuddy", value: "ai_doctor" },
   ]);
-  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+  const [recentChats, setRecentChats] = useState<Message[]>([]);
   const [ngos, setNgos] = useState<NGO[]>([]);
 
   useEffect(() => {
-    const initializeChat = async () => {
-      const initialMsg = getInitialMessage(selectedModel)[0];
-      setMessages([initialMsg]);
-      // Store initial greeting in database
-      await storeMessage(initialMsg.text, "assistant", "text");
-      fetchChatHistory();
-    };
-
-    initializeChat();
+    const initialMsg = getInitialMessage(selectedModel)[0];
+    setMessages([initialMsg]);
   }, [selectedModel]);
 
-  const fetchChatHistory = async () => {
+  // Function to handle API call for therapy response
+  const getBotResponse = async (userText: string, lang = "en") => {
     try {
-      // First get all chats for this user and model
-      const { data: chats, error: chatsError } = await supabase
-        .from("chats")
-        .select("id, created_at")
-        .eq("user_id", user?.id)
-        .eq("model_type", selectedModel)
-        .order("created_at", { ascending: false })
-        .limit(5); // Get last 5 chats
-
-      if (chatsError) throw chatsError;
-
-      if (!chats || chats.length === 0) {
-        setChatHistory([]);
-        return;
+      // Determine which endpoint to use based on selectedModel
+      const endpoint = selectedModel === "medibuddy" ? "doctor" : "therapist";
+      
+      let response;
+      
+      if (endpoint === "therapist") {
+        // Call therapist endpoint with text input
+        response = await fetch(`${API_URL}/therapist`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            text: userText, 
+            lang: lang 
+          }),
+        });
+      } else {
+        // Note: Doctor endpoint requires both audio and image files
+        // This is a simplified implementation that would need more work
+        // This would typically be called with audio recording and image
+        Alert.alert("Info", "Doctor endpoint requires audio and image files");
+        return "I need both audio and image to provide a proper medical assessment.";
       }
 
-      // For each chat, get the last message
-      const chatHistoryPromises = chats.map(async (chat) => {
-        const { data: lastMessage, error: messageError } = await supabase
-          .from("messages")
-          .select("*")
-          .eq("chat_id", chat.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
 
-        if (messageError) throw messageError;
-
-        return {
-          ...lastMessage,
-          chat_id: chat.id,
-          chat_created_at: chat.created_at
-        };
-      });
-
-      const chatHistoryResults = await Promise.all(chatHistoryPromises);
-      setChatHistory(chatHistoryResults);
+      const data = await response.json();
+      
+      // Return the appropriate response field based on the endpoint
+      return endpoint === "therapist" ? data.therapist_response : data.doctor_response;
     } catch (error) {
-      console.error("Error fetching chat history:", error);
-      Alert.alert("Error", "Failed to fetch chat history");
+      console.error("Error getting bot response:", error);
+      return "I'm sorry, I'm having trouble connecting to my knowledge base right now.";
     }
   };
 
   // Function to handle model selection
-  const handleModelSelection = () => {
-    Alert.alert(
-      "Select Model",
-      "",
-      [
-        { text: "Therapist", onPress: () => setSelectedModel("Therapist") },
-        { text: "Doctor", onPress: () => setSelectedModel("Doctor") },
-      ],
-      { cancelable: true }
-    );
+  const handleModelSelection = (value: string) => {
+    setSelectedModel(value);
   };
 
-  // Function to simulate bot response
-  const simulateBotResponse = async () => {
+  // Function to get bot response
+  const simulateBotResponse = async (userText: string) => {
     try {
+      const botResponseText = await getBotResponse(userText);
+      
       const botResponse: Message = {
         id: Date.now().toString(),
         sender: "assistant",
-        text: `I'm the ${selectedModel}. I've received your message.`,
+        text: botResponseText,
         timestamp: new Date(),
       };
       
       setMessages((prevMessages) => [...prevMessages, botResponse]);
       
-      // Store the assistant's response in the database
-      await storeMessage(
-        botResponse.text,
-        "assistant",
-        "text"
-      );
+      // Save this chat to recent chats (simplified)
+      const chatPreview: Message = {
+        id: Date.now().toString(),
+        sender: "assistant",
+        text: botResponseText.substring(0, 50) + (botResponseText.length > 50 ? "..." : ""),
+        timestamp: new Date(),
+      };
+      setRecentChats(prev => [chatPreview, ...prev.slice(0, 4)]); // Keep only 5 recent chats
       
       scrollToBottom();
     } catch (error) {
-      console.error("Error storing assistant response:", error);
-      Alert.alert("Error", "Failed to store assistant response");
-    }
-  };
-
-  // Function to upload media to Supabase storage
-  const uploadMedia = async (uri: string, type: "image" | "audio") => {
-    try {
-      console.log("Starting media upload function");
-
-      if (!uri) {
-        console.log("Error: No URI provided");
-        throw new Error("No URI provided");
-      }
-      console.log(`URI provided: ${uri}, type: ${type}`);
-
-      // Read the file
-      console.log("Fetching file content");
-      const response = await fetch(uri);
-      console.log(`Fetch response status: ${response.status}`);
-
-      if (!response.ok) {
-        console.log(`Error: Failed to read file, status: ${response.status}`);
-        throw new Error("Failed to read file");
-      }
-
-      console.log("Creating blob from response");
-      const blob = await response.blob();
-      console.log(`Blob created, size: ${blob.size}, type: ${blob.type}`);
-
-      if (!blob) {
-        console.log("Error: Failed to create blob");
-        throw new Error("Failed to create blob");
-      }
-
-      // Generate a unique filename with appropriate extension
-      const extension = type === "image" ? ".jpg" : ".m4a";
-      const fileName = `${Date.now()}${extension}`;
-      const filePath = `${user?.id}/${type}s/${fileName}`;
-      console.log(`Generated file path: ${filePath}`);
-
-      // Upload to Supabase storage
-      console.log("Starting Supabase upload");
-      const { data, error } = await supabase.storage
-        .from("chat-media")
-        .upload(filePath, blob, {
-          contentType: type === "image" ? "image/*" : "audio/*",
-          cacheControl: "3600",
-          upsert: true,
-        });
-
-      console.log("Supabase upload response:", { data, error });
-
-      if (error) {
-        console.error("Supabase storage error:", error);
-        throw new Error(`Upload failed: ${error.message}`);
-      }
-
-      // Get the public URL
-      console.log("Getting public URL");
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("chat-media").getPublicUrl(filePath);
-
-      console.log(`Public URL generated: ${publicUrl}`);
-      return publicUrl;
-    } catch (error) {
-      console.error("Error in uploadMedia:", error);
-      Alert.alert(
-        "Upload Error",
-        "Failed to upload media. Please check your internet connection and try again."
-      );
-      return null;
-    }
-  };
-
-  // Function to store message in database
-  const storeMessage = async (
-    content: string,
-    senderType: "user" | "assistant",
-    messageType: "text" | "audio" | "image",
-    mediaUrl?: string
-  ) => {
-    try {
-      let chatId;
-
-      if (messages.length <= 1) { // Only initial message exists
-        // Create new chat
-        const { data: newChat, error: chatError } = await supabase
-          .from("chats")
-          .insert({
-            user_id: user?.id,
-            model_type: selectedModel,
-            sender_type: senderType
-          })
-          .select()
-          .single();
-
-        if (chatError) throw chatError;
-        chatId = newChat.id;
-      } else {
-        // Get the current chat ID from the most recent message
-        const { data: currentChat, error: chatQueryError } = await supabase
-          .from("messages")
-          .select("chat_id")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        if (chatQueryError) throw chatQueryError;
-        chatId = currentChat.chat_id;
-      }
-
-      // Store the message
-      const { data, error } = await supabase.from("messages").insert({
-        chat_id: chatId,
-        sender_type: senderType,
-        message_type: messageType,
-        message_content: content,
-        media_url: mediaUrl,
-      });
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error("Error storing message:", error);
-      throw error;
+      console.error("Error getting bot response:", error);
+      Alert.alert("Error", "Failed to get response from the assistant");
     }
   };
 
@@ -333,24 +185,23 @@ export default function MediBuddyScreen() {
       if (!result.canceled && result.assets[0]) {
         setShowMediaOptions(false);
 
-        // Show loading indicator or some feedback
-        const mediaUrl = await uploadMedia(result.assets[0].uri, "image");
-
-        if (mediaUrl) {
-          const newMessage: Message = {
-            id: Date.now().toString(),
-            sender: "user",
-            text: "",
-            timestamp: new Date(),
-            media: {
-              type: "image",
-              uri: mediaUrl,
-            },
-          };
-          setMessages((prev) => [...prev, newMessage]);
-          await storeMessage("", "user", "image", mediaUrl);
-          await simulateBotResponse();
-        }
+        // Here we would typically upload the image and call an API
+        // For now, we'll just add it to the messages
+        const newMessage: Message = {
+          id: Date.now().toString(),
+          sender: "user",
+          text: "",
+          timestamp: new Date(),
+          media: {
+            type: "image",
+            uri: result.assets[0].uri,
+          },
+        };
+        
+        setMessages((prev) => [...prev, newMessage]);
+        
+        // Add placeholder text for now - in a real app, you'd analyze the image
+        await simulateBotResponse("I'm examining the image you sent.");
       }
     } catch (error) {
       console.error("Error picking image:", error);
@@ -383,24 +234,23 @@ export default function MediBuddyScreen() {
       const uri = recording.getURI();
 
       if (uri) {
-        // Upload the audio file to Supabase
-        const mediaUrl = await uploadMedia(uri, "audio");
-
-        if (mediaUrl) {
-          const newMessage: Message = {
-            id: Date.now().toString(),
-            sender: "user",
-            text: "🎤 Voice message",
-            timestamp: new Date(),
-            media: {
-              type: "audio",
-              uri: mediaUrl,
-            },
-          };
-          setMessages([...messages, newMessage]);
-          await storeMessage("🎤 Voice message", "user", "audio", mediaUrl);
-          await simulateBotResponse();
-        }
+        // Add voice message to chat
+        const newMessage: Message = {
+          id: Date.now().toString(),
+          sender: "user",
+          text: "🎤 Voice message",
+          timestamp: new Date(),
+          media: {
+            type: "audio",
+            uri: uri,
+          },
+        };
+        
+        setMessages([...messages, newMessage]);
+        
+        // In a real app, you would send this audio to your backend
+        // For now, just respond with a placeholder
+        await simulateBotResponse("I've received your voice message.");
       }
     } catch (err) {
       console.error("Error stopping recording:", err);
@@ -421,11 +271,12 @@ export default function MediBuddyScreen() {
           timestamp: new Date(),
         };
         setMessages([...messages, newMessage]);
+        
+        const userText = inputText.trim();
         setInputText("");
 
-        // Store user message in database
-        await storeMessage(inputText.trim(), "user", "text");
-        await simulateBotResponse(); // Wait for bot response to be stored
+        // Get bot response
+        await simulateBotResponse(userText);
       } catch (error) {
         console.error("Error sending message:", error);
         Alert.alert(
@@ -437,7 +288,9 @@ export default function MediBuddyScreen() {
   };
 
   const scrollToBottom = () => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   const formatTime = (date: Date) => {
@@ -499,81 +352,6 @@ export default function MediBuddyScreen() {
     }
   };
 
-  // Modify the ModelSelector component
-  const ModelSelector = () => (
-    <View style={styles.modelSelectorContainer}>
-      <DropDownPicker
-        open={open}
-        value={selectedModel}
-        items={items}
-        setOpen={setOpen}
-        setValue={setSelectedModel}
-        setItems={setItems}
-        style={styles.dropdown}
-        containerStyle={styles.dropdownContainer}
-        labelStyle={styles.dropdownLabel}
-      />
-    </View>
-  );
-
-  // Modify the handlePastChatClick function
-  const handlePastChatClick = async (chat: ChatHistory) => {
-    try {
-      // Fetch all messages for this specific chat
-      const { data: chatMessages, error } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("chat_id", chat.chat_id)
-        .order("created_at", { ascending: true }); // Order by timestamp ascending
-
-      if (error) throw error;
-
-      if (!chatMessages || chatMessages.length === 0) {
-        console.log("No messages found for this chat");
-        return;
-      }
-
-      // Convert messages to the Message format
-      const formattedMessages = chatMessages.map((msg): Message => ({
-        id: msg.id,
-        sender: msg.sender_type as "user" | "assistant",
-        text: msg.message_content,
-        timestamp: new Date(msg.created_at),
-        ...(msg.media_url && {
-          media: {
-            type: msg.message_type as "image" | "audio",
-            uri: msg.media_url,
-          },
-        }),
-      }));
-
-      // Update the messages state
-      setMessages(formattedMessages);
-      
-      // Scroll to bottom after loading messages
-      setTimeout(() => scrollToBottom(), 100);
-    } catch (error) {
-      console.error("Error loading chat messages:", error);
-      Alert.alert("Error", "Failed to load chat messages");
-    }
-  };
-
-  const fetchNGOs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("ngo")
-        .select("id, name, email, phone, address");
-
-      console.log("Fetched NGOs:", data); // Add this line to debug
-
-      if (error) throw error;
-      setNgos(data || []);
-    } catch (error) {
-      console.error("Error fetching NGOs:", error);
-      Alert.alert("Error", "Failed to fetch NGOs");
-    }
-  };
-
   // Create a function to get initial message based on selected model
   const getInitialMessage = (modelType: string): Message[] => {
     if (modelType === "medibuddy") {
@@ -593,6 +371,25 @@ export default function MediBuddyScreen() {
     }
   };
 
+  // Function to handle past chat selection
+  const handlePastChatClick = (message: Message) => {
+    // In a real app, you would fetch the full conversation
+    // For now, just start a new chat with this message as context
+    const initialMsg = getInitialMessage(selectedModel)[0];
+    setMessages([initialMsg]);
+    
+    // Add a message that references the past conversation
+    setTimeout(() => {
+      const contextMessage: Message = {
+        id: Date.now().toString(),
+        sender: "assistant",
+        text: `Continuing our previous conversation about "${message.text}"...`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, contextMessage]);
+    }, 500);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -600,7 +397,6 @@ export default function MediBuddyScreen() {
           style={styles.newChatButton}
           onPress={() => {
             setMessages(getInitialMessage(selectedModel));
-            fetchChatHistory();
           }}
         >
           <MessageCircle size={20} color={THEME.primary} />
@@ -736,9 +532,9 @@ export default function MediBuddyScreen() {
           </View>
         </View>
 
-        {/* Past Chats Section */}
+        {/* Recent Chats Section */}
         <FlatList
-          data={chatHistory}
+          data={recentChats}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={() => (
             <Text style={styles.pastChatsTitle}>Recent Chats</Text>
@@ -749,17 +545,17 @@ export default function MediBuddyScreen() {
               onPress={() => handlePastChatClick(chat)}
             >
               <Text style={styles.pastChatTimestamp}>
-                {new Date(chat.chat_created_at).toLocaleDateString()}
+                {chat.timestamp.toLocaleDateString()}
               </Text>
               <Text style={styles.pastChatMessage} numberOfLines={2}>
-                {chat.message_content}
+                {chat.text}
               </Text>
-              {chat.media_url && (
+              {chat.media && (
                 <View style={styles.pastChatMediaIndicator}>
-                  {chat.message_type === "image" && (
+                  {chat.media.type === "image" && (
                     <ImageIcon size={16} color={THEME.text.light} />
                   )}
-                  {chat.message_type === "audio" && (
+                  {chat.media.type === "audio" && (
                     <Mic size={16} color={THEME.text.light} />
                   )}
                 </View>
