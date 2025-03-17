@@ -189,7 +189,7 @@ export const TranslationProvider: React.FC<TranslationProviderProps> = ({ childr
       for (const key in textKeys) {
         const value = textKeys[key];
         
-        const response = await fetch('https://a00d-49-248-175-242.ngrok-free.app' + '/translate', {
+        const response = await fetch('https://6347-2402-3a80-1b3e-e134-9436-40a-2706-2889.ngrok-free.app' + '/translate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
