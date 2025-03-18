@@ -1,4 +1,3 @@
-
 import Link from "next/link";
 import { Twitter, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,8 +10,8 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
           {/* Logo and Description */}
           <div className="col-span-1 md:col-span-2">
-            <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-400">
-              NGO
+            <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#07A996] to-[#068c7f]">
+              Aarogyasaathi
             </h3>
             <p className="mt-4 text-gray-600 max-w-sm">
               Best NGO Website
@@ -20,13 +19,13 @@ export const Footer = () => {
             <div className="flex gap-4 mt-6">
               <Link 
                 href="https://twitter.com" 
-                className="text-blue-500 hover:text-blue-600 transition-colors"
+                className="text-[#07A996] hover:text-[#068c7f] transition-colors"
               >
                 <Twitter className="h-5 w-5" />
               </Link>
               <Link 
                 href="https://github.com" 
-                className="text-blue-500 hover:text-blue-600 transition-colors"
+                className="text-[#07A996] hover:text-[#068c7f] transition-colors"
               >
                 <Github className="h-5 w-5" />
               </Link>
@@ -41,7 +40,7 @@ export const Footer = () => {
                 <li key={item}>
                   <Link 
                     href={`#${item.toLowerCase()}`}
-                    className="text-gray-600 hover:text-blue-600 transition-colors"
+                    className="text-gray-600 hover:text-[#07A996] transition-colors"
                   >
                     {item}
                   </Link>
@@ -55,17 +54,17 @@ export const Footer = () => {
             <h4 className="font-semibold text-gray-800 mb-4">Contact</h4>
             <ul className="space-y-3">
               <li className="text-gray-600">
-                Email: hello@automateai.com
+                Email: hello@aarogyasaathi.com
               </li>
               <li className="text-gray-600">
-                Support: support@automateai.com
+                Support: support@aarogyasaathi.com
               </li>
               <li>
                 <Button 
                   className={cn(
-                    "mt-4 bg-gradient-to-r from-blue-500 to-blue-600",
-                    "hover:from-blue-600 hover:to-blue-700 text-white",
-                    "transition-all duration-200 shadow-lg hover:shadow-blue-200"
+                    "mt-4 bg-gradient-to-r from-[#07A996] to-[#068c7f]",
+                    "hover:from-[#068c7f] hover:to-[#057a6f] text-white",
+                    "transition-all duration-200 shadow-lg hover:shadow-[#07A996]/20"
                   )}
                 >
                   Contact Us
@@ -79,18 +78,18 @@ export const Footer = () => {
         <div className="mt-16 pt-8 border-t border-blue-50">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-gray-600 text-sm">
-              © 2024 AutomateAI. All rights reserved.
+              © 2024 aarogyasaathi. All rights reserved.
             </p>
             <div className="flex gap-6">
               <Link 
                 href="/privacy" 
-                className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                className="text-sm text-gray-600 hover:text-[#07A996] transition-colors"
               >
                 Privacy Policy
               </Link>
               <Link 
                 href="/terms" 
-                className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                className="text-sm text-gray-600 hover:text-[#07A996] transition-colors"
               >
                 Terms of Service
               </Link>

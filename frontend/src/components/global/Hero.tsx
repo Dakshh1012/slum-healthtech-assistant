@@ -1,4 +1,3 @@
-
 import React from 'react'
 import { Button } from '../ui/button'
 import HeroVideoDialog from '../magicui/hero-video-dialog'
@@ -16,21 +15,21 @@ const Hero = () => {
        
         
         {/* Headline */}
-        <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600">
-          NGO WEBSITE
+        <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-b from-[#07A996] to-[#058275]">
+          Empowering Slum<br/> Communities
         </h1>
 
         {/* Subheading */}
         <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-10">
-        With our state-of-the-art, cutting-edge, mission-driven hosting services, your NGO can launch its website in seconds—amplifying your impact effortlessly.
+          Join us in our mission to transform lives in slum communities. We provide education, healthcare support, and essential resources to create lasting positive change for underprivileged families across India.
         </p>
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button 
-            className="bg-gradient-to-r from-blue-500 to-blue-700 text-white hover:opacity-90 px-8 py-6 text-lg shadow-lg shadow-green-500/25 transition-all duration-200"
+            className="bg-gradient-to-r from-[#07A996] to-[#058275] text-white hover:opacity-90 px-8 py-6 text-lg shadow-lg shadow-[#07A996]/25 transition-all duration-200"
           >
-            Create account
+            Support Our Cause
           </Button>
           {/* <Button 
             variant="outline"
@@ -42,7 +41,7 @@ const Hero = () => {
 
         {/* Video Dialog Section */}
         <div className="mt-16 relative">
-          <div className="absolute -z-10 size-96 bg-blue-500/20 rounded-full blur-3xl top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute -z-10 size-96 bg-[#07A996]/20 rounded-full blur-3xl top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           <HeroVideoDialog
             videoSrc="https://www.youtube.com/embed/your-video-id"
             thumbnailSrc="/dashboard.png"

@@ -1,29 +1,29 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import Image from "next/image"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
 
 interface SimpleDropdownItem {
-  title: string
-  description: string
+  title: string;
+  description: string;
 }
 
 interface NavigationItem {
-  title: string
-  href: string
+  title: string;
+  href: string;
 }
 
 interface SectionDropdownItem {
-  section: string
-  items: NavigationItem[]
+  section: string;
+  items: NavigationItem[];
 }
 
-type DropdownItem = SimpleDropdownItem | SectionDropdownItem
+type DropdownItem = SimpleDropdownItem | SectionDropdownItem;
 
 interface NavItem {
-  title: string
-  dropdownItems: DropdownItem[]
+  title: string;
+  dropdownItems: DropdownItem[];
 }
 
 const NavItems: NavItem[] = [
@@ -67,46 +67,47 @@ const NavItems: NavItem[] = [
   //   title: "For Developers",
   //   dropdownItems: [],
   // },
-]
+];
 
 export default function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 0)
-    }
+      setIsScrolled(window.scrollY > 0);
+    };
 
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Check if an item is a SimpleDropdownItem
   const isSimpleItem = (item: DropdownItem): item is SimpleDropdownItem => {
-    return 'title' in item && 'description' in item
-  }
+    return "title" in item && "description" in item;
+  };
 
   // Check if an item is a SectionDropdownItem
   const isSectionItem = (item: DropdownItem): item is SectionDropdownItem => {
-    return 'section' in item && 'items' in item
-  }
+    return "section" in item && "items" in item;
+  };
 
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-      isScrolled ? "bg-white/80 backdrop-blur-md border-b border-gray-200" : ""
-    }`}>
+    <nav
+      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+        isScrolled
+          ? "bg-white/80 backdrop-blur-md border-b border-gray-200"
+          : ""
+      }`}
+    >
       <div className="max-w-[1300px] mx-auto">
         <div className="flex items-center justify-between h-16 px-6">
           {/* Logo */}
           <div className="flex-shrink-0 pr-8">
-            <Link href="/" className="flex items-center">
-              <Image
-                src="/logo.svg?height=40&width=40"
-                alt="Logo"
-                width={40}
-                height={40}
-                className="h-8 w-auto"
-              />
+            <Link
+              href="/"
+              className="flex items-center text-xl font-bold text-[#07A996]"
+            >
+              AarogyaSaathi
             </Link>
           </div>
 
@@ -119,11 +120,14 @@ export default function Navbar() {
                     {item.title}
                   </div>
                 ) : (
-                  <NavLink href={`/${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <NavLink
+                    href={`/${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                    className="px-3 py-2 text-sm text-gray-600 hover:text-[#07A996] transition-colors font-medium"
+                  >
                     {item.title}
                   </NavLink>
                 )}
-                
+
                 {/* Dropdown Menu */}
                 {item.dropdownItems.length > 0 && (
                   <div className="absolute left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-100 py-3 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
@@ -134,11 +138,15 @@ export default function Navbar() {
                         <div key={idx}>
                           {isSimpleItem(dropdownItem) && (
                             <div className="px-4 py-2 hover:bg-gray-50">
-                              <div className="font-medium text-gray-800">{dropdownItem.title}</div>
-                              <div className="text-xs text-gray-500 mt-1">{dropdownItem.description}</div>
+                              <div className="font-medium text-gray-800">
+                                {dropdownItem.title}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {dropdownItem.description}
+                              </div>
                             </div>
                           )}
-                          
+
                           {isSectionItem(dropdownItem) && (
                             <div className="pt-2 pb-1">
                               <div className="px-4 py-1 text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -149,7 +157,7 @@ export default function Navbar() {
                                   <Link
                                     key={linkIdx}
                                     href={link.href}
-                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-[#07A996]/10 hover:text-[#07A996]"
                                   >
                                     {link.title}
                                   </Link>
@@ -168,12 +176,15 @@ export default function Navbar() {
 
           {/* Auth Buttons */}
           <div className="flex items-center gap-4">
-            <Link href="/login" className="hidden md:block text-sm text-gray-600 hover:text-gray-900">
+            <Link
+              href="/login"
+              className="hidden md:block text-sm text-gray-600 hover:text-gray-900"
+            >
               Log in
             </Link>
-            <Link 
+            <Link
               href="/signup"
-              className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="text-sm bg-[#07A996] text-white px-4 py-2 rounded-lg hover:bg-[#068c7f] transition-colors"
             >
               Sign up
             </Link>
@@ -181,17 +192,25 @@ export default function Navbar() {
         </div>
       </div>
     </nav>
-  )
+  );
 }
 
 // NavLink component for consistent styling
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+function NavLink({
+  href,
+  children,
+  className,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <Link 
-      href={href} 
-      className="px-3 py-2 text-sm text-gray-600 hover:text-blue-600 transition-colors font-medium"
+    <Link
+      href={href}
+      className={className || "px-3 py-2 text-sm text-gray-600 hover:text-blue-600 transition-colors font-medium"}
     >
       {children}
     </Link>
-  )
+  );
 }

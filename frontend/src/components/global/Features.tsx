@@ -41,6 +41,7 @@ const features: Feature[] = [
     image: "/features/image4.png",
     gradient: "from-fuchsia-500 via-rose-500 to-orange-500",
   },
+  
 ];
 
 const FeatureCard = ({
